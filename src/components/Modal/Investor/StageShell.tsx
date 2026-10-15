@@ -397,25 +397,10 @@ export function StageShell({
                 value={state.amount ? fmtAmount(state.amount) : "—"}
                 large
               />
-              <BarItem
-                label="Investment No."
-                value={
-                  state.investmentNo || (
-                    <Badge
-                      size="sm"
-                      radius="sm"
-                      variant="light"
-                      color="warning"
-                      style={{
-                        textTransform: "none",
-                        border: "1px solid var(--mantine-color-warning-3)",
-                      }}
-                    >
-                      Pending
-                    </Badge>
-                  )
-                }
-              />
+              {/* Shown only once the investment has its number. */}
+              {state.investmentNo && (
+                <BarItem label="Investment No." value={state.investmentNo} />
+              )}
             </Group>
           </Group>
         </Box>

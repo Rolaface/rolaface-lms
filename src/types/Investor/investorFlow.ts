@@ -220,6 +220,12 @@ export interface InvestorScheduleVersion {
 
 /** get_investor_earning_by_id data. */
 export interface InvestorEarning extends InvestorEarningDetails {
+  /** Set when this is an amendment (Amend Payouts): Draft / Approved / Cancelled. */
+  amend_status?: AmendStatus | null;
+  /** Date the amendment was saved / approved. */
+  amend_date?: string | null;
+  /** Amendment: principal / interest totals of the schedule in use (it cannot go above them). */
+  in_use_totals?: { principal_amount: number; interest_amount: number };
   id: string;
   status: InvestorFlowStatus;
   fund_status: InvestorFundStatus;
@@ -988,6 +994,8 @@ export interface InvestorReportRow {
   fund_received: number;
   /** Paid out to the investor (principal + interest + penalty). */
   amount_paid: number;
+  /** Principal of the current schedule (the principal obligation). */
+  total_principal: number;
   principal_paid: number;
   total_interest: number;
   interest_paid: number;
@@ -1008,6 +1016,7 @@ export type InvestorReportAmountField =
   | "investment_amount"
   | "fund_received"
   | "amount_paid"
+  | "total_principal"
   | "principal_paid"
   | "total_interest"
   | "interest_paid"
@@ -1048,6 +1057,15 @@ export interface InvestorReportInsights {
   };
   /** Per month (YYYY-MM): EMIs due vs approved payouts; actual is null for months still to come. */
   trend: { month: string; scheduled: number; actual: number | null }[];
+  /** The next unpaid EMIs from today (soonest first); amount = what is still owed on it. */
+  upcoming_emis: {
+    investment_id: string;
+    investor: string;
+    emi_number: number;
+    payment_date: string;
+    days_left: number;
+    amount: number;
+  }[];
   upcoming_maturities: {
     window_days: number;
     count: number;
@@ -1074,5 +1092,44 @@ export interface InvestorReportParams {
   page?: number;
   /** 0 = every row (export). */
   page_size?: number;
+}
+
+/* ------------------------------ Amend Payouts ------------------------------ */
+
+export type AmendStatus = "Draft" | "Approved" | "Cancelled";
+export const AMEND_STATUSES: AmendStatus[] = ["Draft", "Approved", "Cancelled"];
+
+/** One amendment (an investment's schedule version saved through Amend Payouts). */
+export interface AmendmentListItem {
+  investment_id: string;
+  investor_id: string;
+  investor: string;
+  version: number;
+  amend_status: AmendStatus;
+  amend_date: string | null;
+  modified: string;
+  emis: number;
+  principal: number;
+  interest: number;
+  penalty: number;
+  total: number;
+}
+
+export interface AmendmentListParams {
+  search?: string;
+  amend_status?: AmendStatus[];
+  page?: number;
+  page_size?: number;
+}
+
+/** An investment whose schedule can be amended now (no Draft amendment yet). */
+export interface AmendCandidate {
+  id: string;
+  investor_id: string;
+  investor: string;
+  investor_email: string | null;
+  investor_mobile: string | null;
+  emis: number;
+  emis_paid: number;
 }
 

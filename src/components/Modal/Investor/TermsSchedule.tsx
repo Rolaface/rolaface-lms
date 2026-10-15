@@ -67,6 +67,7 @@ export function TermsSchedule({
   const lastRow = Math.min(rows.length, currentPage * pageSize);
   const totalPrincipal = rows.reduce((t, r) => t + r.principal, 0);
   const totalInterest = rows.reduce((t, r) => t + r.interest, 0);
+  const totalPenalty = rows.reduce((t, r) => t + r.penalty, 0);
 
   // The mock data (Earnings & Maturity view) can hold "At maturity", which is not an option here.
   const frequencyOptions: string[] = isRepaymentFrequency(state.frequency)
@@ -258,7 +259,7 @@ export function TermsSchedule({
                 onChange={(value) => update({ maturity: value })}
               />
             </SimpleGrid>
-            <Group gap="sm" wrap="nowrap" mih={36}>
+            <Group gap="sm" wrap="nowrap" mih={36} align="flex-end">
               <Checkbox
                 label="Penalty applicable"
                 size="sm"
@@ -270,6 +271,7 @@ export function TermsSchedule({
               />
               {state.penaltyApplicable && (
                 <NumberInput
+                  label="Penalty Rate"
                   size="xs"
                   radius="md"
                   hideControls
@@ -343,14 +345,14 @@ export function TermsSchedule({
                             {formatAmount(companyCurrency, r.interest)}
                           </Table.Td>
                           {showPenalty && (
-                            <Table.Td ta="right" c="slate.5">
-                              {state.penaltyRate}% p.a.
+                            <Table.Td ta="right" c="danger.7">
+                              {formatAmount(companyCurrency, r.penalty)}
                             </Table.Td>
                           )}
                           <Table.Td ta="right" fw={800}>
                             {formatAmount(
                               companyCurrency,
-                              r.principal + r.interest,
+                              r.principal + r.interest + r.penalty,
                             )}
                           </Table.Td>
                         </Table.Tr>
@@ -368,11 +370,15 @@ export function TermsSchedule({
                         <Table.Td ta="right" fw={800} c="warning.7">
                           {formatAmount(companyCurrency, totalInterest)}
                         </Table.Td>
-                        {showPenalty && <Table.Td />}
+                        {showPenalty && (
+                          <Table.Td ta="right" fw={800} c="danger.7">
+                            {formatAmount(companyCurrency, totalPenalty)}
+                          </Table.Td>
+                        )}
                         <Table.Td ta="right" fw={800}>
                           {formatAmount(
                             companyCurrency,
-                            totalPrincipal + totalInterest,
+                            totalPrincipal + totalInterest + totalPenalty,
                           )}
                         </Table.Td>
                       </Table.Tr>

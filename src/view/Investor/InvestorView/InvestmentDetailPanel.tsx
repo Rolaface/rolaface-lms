@@ -335,13 +335,13 @@ function InvestmentDetailBody({
         <Tabs value={tab} onChange={setTab} color="brand">
           <Tabs.List mb="md">
             <Tabs.Tab value="funds" leftSection={<IconCash size={14} />}>
-              Funds paid ({detail.funds.length})
+              Fund Receipt ({detail.funds.length})
             </Tabs.Tab>
             <Tabs.Tab
               value="schedule"
               leftSection={<IconListDetails size={14} />}
             >
-              Repayments ({detail.schedule.length})
+              Investor Payout ({detail.schedule.length})
             </Tabs.Tab>
             <Tabs.Tab value="trail" leftSection={<IconRoute size={14} />}>
               Money trail

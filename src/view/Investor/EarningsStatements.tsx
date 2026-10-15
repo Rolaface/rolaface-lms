@@ -1,322 +1,218 @@
-import { useEffect, useMemo, useState } from "react";
+/* Amend Payouts: amendments to investments' repayment schedules (Draft -> Approved -> Cancelled),
+   with Create Amend. A Draft is not in use until it is approved. */
+import { useMemo, useState } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
 import {
   ActionIcon,
+  Badge,
   Box,
   Button,
-  TextInput,
   Group,
   Loader,
+  Menu,
   Pagination,
   Paper,
   Select,
+  Stack,
   Table,
-  Badge,
   Text,
+  TextInput,
   Title,
   Tooltip,
-  Stack,
   useMantineTheme,
 } from "@mantine/core";
 import {
-  IconChevronUp,
   IconChevronDown,
-  IconSelector,
-  IconSearch,
-  IconFileText,
+  IconDotsVertical,
   IconEye,
-  IconPencil,
+  IconFileText,
   IconMoneybagPlus,
+  IconPencil,
+  IconPlus,
+  IconSearch,
+  IconTrash,
 } from "@tabler/icons-react";
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  flexRender,
-  createColumnHelper,
-} from "@tanstack/react-table";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FilterMultiSelect } from "../../components/shared/FilterMultiSelect";
-import { getInvestorEarnings } from "../../api/Investor/investorFlowApi";
-import { getEveryInvestmentProduct } from "../../api/Investor/productApi";
-import type { InvestorEarningListItem } from "../../types/Investor/investorFlow";
+import {
+  approveAmendment,
+  cancelAmendment,
+  deleteAmendment,
+  getAmendments,
+} from "../../api/Investor/investorFlowApi";
+import {
+  AMEND_STATUSES,
+  type AmendStatus,
+  type AmendmentListItem,
+} from "../../types/Investor/investorFlow";
 import { formatAmount } from "../../store/currencyStore";
 import { useCompanyStore } from "../../store/companyStore";
+import { parseFrappeError } from "../../utils/parseFrappeError";
+import { openCommonModal } from "../../components/Modal/AlertModal";
 import { earningsStatementsModal } from "../../components/Modal/Investor/earningsStatementsModalStore";
 import { formatInvestorDate } from "../../components/Modal/Investor/investorDate";
 
-const columnHelper = createColumnHelper<InvestorEarningListItem>();
+const STATUS_COLOR: Record<AmendStatus, string> = {
+  Draft: "slate",
+  Approved: "success",
+  Cancelled: "danger",
+};
+const STATUS_OPTIONS = AMEND_STATUSES.map((v) => ({ value: v, label: v }));
 
-function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
-  const color = sorted
-    ? "var(--mantine-color-brand-6)"
-    : "var(--mantine-color-slate-4)";
-  if (sorted === "asc") return <IconChevronUp size={12} color={color} />;
-  if (sorted === "desc") return <IconChevronDown size={12} color={color} />;
-  return <IconSelector size={12} color={color} style={{ opacity: 0.5 }} />;
-}
+const TH = {
+  fontSize: "var(--mantine-font-size-xs)",
+  fontWeight: 700,
+  color: "var(--mantine-color-slate-5)",
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.04em",
+  border: "none",
+  padding: "0 10px 6px",
+};
 
-const fmtDate = (iso: string | null) => formatInvestorDate(iso);
-
-const chevronDown = <IconChevronDown size={14} style={{ opacity: 0.6 }} />;
-
-const RIGHT_ALIGNED = ["amount_invested", "rate_of_interest", "actions"];
+const HEADERS: { label: string; right?: boolean }[] = [
+  { label: "Investor" },
+  { label: "Version" },
+  { label: "Amend Date" },
+  { label: "Payouts" },
+  { label: "Principal", right: true },
+  { label: "Interest", right: true },
+  { label: "Penalty", right: true },
+  { label: "Total", right: true },
+  { label: "Status" },
+];
 
 export function EarningsStatements() {
   const theme = useMantineTheme();
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const fmtAmount = (value: number) =>
     formatAmount(companyCurrency, value, { withSymbol: true });
+  const queryClient = useQueryClient();
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebouncedValue(searchInput, 400);
-  const [productFilter, setProductFilter] = useState<string[]>([]);
-  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, productFilter]);
-
-  /* ------------------------------- Data ------------------------------- */
-  const {
-    data: earningsResponse,
-    isLoading,
-    isFetching,
-  } = useQuery({
-    queryKey: [
-      "investorEarnings",
-      debouncedSearch,
-      productFilter,
-      page,
-      pageSize,
-    ],
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["amendments", debouncedSearch, statusFilter, page, pageSize],
     queryFn: () =>
-      getInvestorEarnings({
+      getAmendments({
         search: debouncedSearch.trim() || undefined,
-        investment_product: productFilter,
+        amend_status: statusFilter as AmendStatus[],
         page,
         page_size: pageSize,
       }),
     placeholderData: (prev) => prev,
   });
-
-  const { data: products = [] } = useQuery({
-    queryKey: ["investmentProducts", "all"],
-    queryFn: getEveryInvestmentProduct,
-  });
-
-  const earnings = earningsResponse?.data ?? [];
-  const totalRows = earningsResponse?.pagination?.total ?? 0;
-  const totalPages = earningsResponse?.pagination?.total_pages ?? 1;
+  const rows = useMemo(() => data?.data ?? [], [data]);
+  const totalRows = data?.pagination?.total ?? 0;
+  const totalPages = data?.pagination?.total_pages ?? 1;
   const firstRow = totalRows === 0 ? 0 : (page - 1) * pageSize + 1;
   const lastRow = Math.min(totalRows, page * pageSize);
 
-  /* ----------------------------- Modal ----------------------------- */
-  const openModal = (id: string, readOnly: boolean) =>
-    earningsStatementsModal.open({ investorFlowId: id, readOnly });
-
-  /* ----------------------------- Table ----------------------------- */
-  const productOptions = useMemo(
-    () => products.map((p) => ({ value: p.name, label: p.product_name })),
-    [products],
-  );
-
-  const columns = useMemo(
-    () => [
-      // columnHelper.accessor("name", {
-      //   header: "Investment ID",
-      //   cell: (info) => (
-      //     <Text
-      //       fz="sm"
-      //       fw={700}
-      //       c="slate.8"
-      //       style={{ fontFamily: "var(--mantine-font-family-monospace)" }}
-      //     >
-      //       {info.getValue()}
-      //     </Text>
-      //   ),
-      // }),
-      columnHelper.accessor("investor", {
-        header: "Investor",
-        cell: (info) => (
-          <Text fz="sm" fw={600} c="slate.8">
-            {info.getValue()}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor("investment_product_name", {
-        header: "Product",
-        cell: (info) => (
-          <Badge
-            variant="light"
-            size="sm"
-            radius="sm"
-            color="brand"
-            styles={{ root: { fontSize: 10, padding: "0 8px" } }}
-          >
-            {info.getValue()}
-          </Badge>
-        ),
-      }),
-      columnHelper.accessor("amount_invested", {
-        header: "Amount",
-        cell: (info) => (
-          <Text
-            fz="xs"
-            c="slate.6"
-            ta="right"
-            style={{
-              fontFamily: "var(--mantine-font-family-monospace)",
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {fmtAmount(Number(info.getValue()) || 0)}
-          </Text>
-        ),
-        sortingFn: "basic",
-      }),
-      columnHelper.accessor("rate_of_interest", {
-        header: "Rate",
-        cell: (info) => (
-          <Text fz="xs" c="slate.6" ta="right">
-            {`${info.getValue()}%`}
-          </Text>
-        ),
-        sortingFn: "basic",
-      }),
-      columnHelper.accessor("frequency", {
-        header: "Frequency",
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {info.getValue() || "-"}
-          </Text>
-        ),
-      }),
-      columnHelper.accessor("first_repay_date", {
-        header: "First Repay",
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {fmtDate(info.getValue())}
-          </Text>
-        ),
-        sortingFn: "basic",
-      }),
-      columnHelper.accessor("mat_date", {
-        header: "Maturity",
-        cell: (info) => (
-          <Text fz="xs" c="slate.6">
-            {fmtDate(info.getValue())}
-          </Text>
-        ),
-        sortingFn: "basic",
-      }),
-      columnHelper.accessor("payment_status", {
-        header: "Payment Status",
-        cell: (info) => {
-          const value = info.getValue();
-          if (!value)
-            return (
-              <Text fz="xs" c="slate.4">
-                -
-              </Text>
-            );
-          const color =
-            {
-              Pending: "slate",
-              Paid: "success",
-              Renewed: "brand",
-              Expired: "danger",
-            }[value] ?? "slate";
-          return (
-            <Badge
-              variant="light"
-              size="sm"
-              radius="xl"
-              color={color}
-              styles={{ root: { textTransform: "none", fontWeight: 700 } }}
-            >
-              {value}
-            </Badge>
-          );
-        },
-      }),
-      columnHelper.display({
-        id: "actions",
-        header: () => (
-          <Text fz="xs" fw={600} ta="right" w="100%">
-            Actions
-          </Text>
-        ),
-        cell: (info) => {
-          const row = info.row.original;
-          return (
-            <Group justify="flex-end" gap={4} wrap="nowrap">
-              <Tooltip label="View" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color="slate"
-                  radius="md"
-                  onClick={() => openModal(row.name, true)}
-                >
-                  <IconEye size={14} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip
-                label={
-                  row.status === "Cancelled"
-                    ? "Cancelled: view only"
-                    : row.payment_status === "Paid"
-                      ? "Fully paid: view only"
-                      : row.payment_status === "Expired"
-                        ? "Expired: rows can only be paid"
-                        : "Edit"
-                }
-                withArrow
-              >
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  color={
-                    row.status !== "Cancelled" && row.payment_status !== "Paid"
-                      ? "brand"
-                      : "slate"
-                  }
-                  radius="md"
-                  disabled={
-                    row.status === "Cancelled" || row.payment_status === "Paid"
-                  }
-                  onClick={() => openModal(row.name, false)}
-                >
-                  <IconPencil size={14} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          );
-        },
-      }),
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [companyCurrency],
-  );
-
-  const table = useReactTable({
-    data: earnings,
-    columns,
-    state: { sorting },
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-  });
-
-  const rows = table.getRowModel().rows;
-
-  const resetFilters = () => {
-    setSearchInput("");
-    setProductFilter([]);
+  const refresh = (investmentId: string) => {
+    queryClient.invalidateQueries({ queryKey: ["amendments"] });
+    queryClient.invalidateQueries({ queryKey: ["amendCandidates"] });
+    queryClient.invalidateQueries({ queryKey: ["amendment", investmentId] });
+    // The schedule in use changes on Approve / Cancel: everything that shows it is refreshed.
+    queryClient.invalidateQueries({
+      queryKey: ["investorEarning", investmentId],
+    });
+    queryClient.invalidateQueries({ queryKey: ["investorEarnings"] });
+    queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
+    queryClient.invalidateQueries({
+      queryKey: ["payoutContext", investmentId],
+    });
+    queryClient.invalidateQueries({ queryKey: ["payoutCandidates"] });
+    queryClient.invalidateQueries({ queryKey: ["investorPortfolio"] });
+    queryClient.invalidateQueries({ queryKey: ["investorInvestmentDetail"] });
+    queryClient.invalidateQueries({ queryKey: ["investorStatement"] });
+    queryClient.invalidateQueries({ queryKey: ["investorReport"] });
   };
+  const showSuccess = (heading: string, body: string) =>
+    openCommonModal({
+      heading,
+      subtitle: "",
+      body,
+      color: "green",
+      buttons: [{ label: "Close", color: "green" }],
+    });
+  const showError = (heading: string, error: unknown) =>
+    openCommonModal({
+      heading,
+      subtitle: "We couldn't complete your request.",
+      body: parseFrappeError(error),
+      color: "red",
+      buttons: [{ label: "Close", color: "red" }],
+    });
+  const confirm = (
+    heading: string,
+    body: string,
+    label: string,
+    color: string,
+    onConfirm: () => void,
+  ) =>
+    openCommonModal({
+      heading,
+      subtitle: "Please confirm this action before continuing.",
+      body,
+      color,
+      buttons: [
+        { label: "Back", variant: "default" },
+        { label, color, onClick: onConfirm },
+      ],
+    });
+
+  const action = (
+    fn: (args: { id: string; version: number }) => Promise<unknown>,
+    success: (row: AmendmentListItem) => [string, string],
+    failure: string,
+  ) => ({
+    // Never re-sent automatically: the first request may already have gone through.
+    retry: false,
+    mutationFn: (row: AmendmentListItem) =>
+      fn({ id: row.investment_id, version: row.version }),
+    onSuccess: (_data: unknown, row: AmendmentListItem) => {
+      refresh(row.investment_id);
+      showSuccess(...success(row));
+    },
+    onError: (error: unknown) => showError(failure, error),
+  });
+  const approveMutation = useMutation(
+    action(
+      approveAmendment,
+      (row) => [
+        "Amendment Approved",
+        `The amended schedule of ${row.investment_id} is now in use.`,
+      ],
+      "Approve Failed",
+    ),
+  );
+  const cancelMutation = useMutation(
+    action(
+      cancelAmendment,
+      (row) => [
+        "Amendment Cancelled",
+        `${row.investment_id} is back on the schedule it had before this amendment.`,
+      ],
+      "Cancel Failed",
+    ),
+  );
+  const deleteMutation = useMutation(
+    action(
+      deleteAmendment,
+      () => ["Amendment Deleted", "The amendment has been deleted."],
+      "Delete Failed",
+    ),
+  );
+
+  const open = (mode: "view" | "edit", row: AmendmentListItem) =>
+    earningsStatementsModal.open({
+      mode,
+      investorFlowId: row.investment_id,
+      version: row.version,
+    });
 
   return (
     <Stack gap="lg" p="lg">
@@ -355,13 +251,23 @@ export function EarningsStatements() {
               Amend Payouts
             </Title>
             <Text fz="sm" c="slate.5">
-              View and edit the repayment schedule of investments
+              Amend an investment's repayment schedule; an amendment is used
+              once it is approved
             </Text>
           </Stack>
         </Group>
+        <Button
+          radius="xl"
+          color="brand"
+          leftSection={<IconPlus size={16} />}
+          style={{ background: theme.other.brandGradient }}
+          onClick={() => earningsStatementsModal.open({ mode: "create" })}
+        >
+          Create Amend
+        </Button>
       </Group>
 
-      {/* Filter bar */}
+      {/* Filters */}
       <Paper
         radius="xl"
         p="xs"
@@ -375,31 +281,39 @@ export function EarningsStatements() {
             className="lms-search"
             size="sm"
             radius="xl"
-            placeholder="Investment ID / Customer"
+            placeholder="Investment ID / investor name, mobile, ID or email"
             leftSection={<IconSearch size={14} />}
             style={{ flex: 1, minWidth: 220 }}
             styles={{
               input: { border: "1px solid var(--mantine-color-slate-2)" },
             }}
             value={searchInput}
-            onChange={(e) => setSearchInput(e.currentTarget.value)}
+            onChange={(e) => {
+              setSearchInput(e.currentTarget.value);
+              setPage(1);
+            }}
           />
-
           <FilterMultiSelect
-            placeholder="All Products"
-            data={productOptions}
-            value={productFilter}
-            onChange={setProductFilter}
-            width={140}
+            placeholder="All Status"
+            data={STATUS_OPTIONS}
+            value={statusFilter}
+            onChange={(v) => {
+              setStatusFilter(v);
+              setPage(1);
+            }}
+            width={150}
           />
-
           <Button
             size="sm"
             radius="xl"
             variant="default"
             px="sm"
             style={{ flexShrink: 0 }}
-            onClick={resetFilters}
+            onClick={() => {
+              setSearchInput("");
+              setStatusFilter([]);
+              setPage(1);
+            }}
           >
             Reset
           </Button>
@@ -410,7 +324,6 @@ export function EarningsStatements() {
       <Paper
         radius="lg"
         p="sm"
-        pos="relative"
         style={{
           background: "var(--mantine-color-slate-0)",
           border: "1px solid var(--mantine-color-slate-2)",
@@ -425,7 +338,7 @@ export function EarningsStatements() {
             <Box
               style={{
                 height: "clamp(320px, calc(100vh - 330px), 720px)",
-                overflowY: "auto",
+                overflow: "auto",
                 opacity: isFetching ? 0.6 : 1,
               }}
             >
@@ -437,111 +350,268 @@ export function EarningsStatements() {
                 style={{ borderCollapse: "separate", borderSpacing: "0 8px" }}
               >
                 <Table.Thead>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <Table.Tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => {
-                        const canSort = header.column.getCanSort();
-                        const rightAligned = RIGHT_ALIGNED.includes(header.id);
-                        return (
-                          <Table.Th
-                            key={header.id}
-                            className="lms-thead-cell"
-                            c="slate.5"
-                            fw={700}
-                            style={{
-                              fontSize: "var(--mantine-font-size-xs)",
-                              padding: "0 10px 6px",
-                              userSelect: "none",
-                              cursor: canSort ? "pointer" : "default",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.04em",
-                              border: "none",
-                            }}
-                            onClick={header.column.getToggleSortingHandler()}
-                          >
-                            <Group
-                              gap="xs"
-                              wrap="nowrap"
-                              justify={rightAligned ? "flex-end" : "flex-start"}
-                            >
-                              {flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                              {canSort && (
-                                <SortIcon
-                                  sorted={header.column.getIsSorted()}
-                                />
-                              )}
-                            </Group>
-                          </Table.Th>
-                        );
-                      })}
-                    </Table.Tr>
-                  ))}
+                  <Table.Tr>
+                    {HEADERS.map((h) => (
+                      <Table.Th
+                        key={h.label}
+                        className="lms-thead-cell"
+                        style={{ ...TH, textAlign: h.right ? "right" : "left" }}
+                      >
+                        {h.label}
+                      </Table.Th>
+                    ))}
+                    <Table.Th
+                      className="lms-thead-cell"
+                      style={{ ...TH, textAlign: "right" }}
+                    >
+                      Actions
+                    </Table.Th>
+                  </Table.Tr>
                 </Table.Thead>
-
                 <Table.Tbody>
                   {rows.length === 0 ? (
                     <Table.Tr>
                       <Table.Td
-                        colSpan={columns.length}
+                        colSpan={HEADERS.length + 1}
                         style={{ border: "none" }}
                       >
                         <Stack align="center" gap="xs" py="xl">
-                          <Box
-                            style={{
-                              width: 52,
-                              height: 52,
-                              borderRadius: "50%",
-                              background: "var(--mantine-color-white)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              border: "1px solid var(--mantine-color-slate-2)",
-                            }}
-                          >
-                            <IconFileText
-                              size={24}
-                              color="var(--mantine-color-slate-4)"
-                            />
-                          </Box>
+                          <IconFileText
+                            size={26}
+                            color="var(--mantine-color-slate-4)"
+                          />
                           <Text ta="center" c="slate.5" fz="xs">
-                            No received investments match your filters.
+                            No amendments yet. Use Create Amend to amend an
+                            investment's schedule.
                           </Text>
                         </Stack>
                       </Table.Td>
                     </Table.Tr>
                   ) : (
-                    rows.map((row) => (
-                      <Table.Tr key={row.id} className="lms-row">
-                        {row.getVisibleCells().map((cell, idx) => (
+                    rows.map((row) => {
+                      const isDraft = row.amend_status === "Draft";
+                      const isApproved = row.amend_status === "Approved";
+                      const canDelete =
+                        isDraft || row.amend_status === "Cancelled";
+                      const cell = {
+                        padding: "10px",
+                        border: "none",
+                        boxShadow: "var(--mantine-shadow-xs)",
+                      };
+                      const money = (v: number) => (
+                        <Text
+                          fz="xs"
+                          fw={600}
+                          c="slate.8"
+                          style={{ fontVariantNumeric: "tabular-nums" }}
+                        >
+                          {fmtAmount(Number(v) || 0)}
+                        </Text>
+                      );
+                      return (
+                        <Table.Tr
+                          key={`${row.investment_id}-${row.version}`}
+                          className="lms-row"
+                          onDoubleClick={() => open("view", row)}
+                          style={{ cursor: "pointer" }}
+                        >
                           <Table.Td
-                            key={cell.id}
                             style={{
-                              padding: "10px 10px",
-                              border: "none",
-                              boxShadow: "var(--mantine-shadow-xs)",
-                              borderLeft:
-                                idx === 0
-                                  ? "3px solid var(--mantine-color-info-4)"
-                                  : undefined,
+                              ...cell,
+                              borderLeft: `3px solid var(--mantine-color-${STATUS_COLOR[row.amend_status]}-4)`,
                             }}
                           >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
+                            <Text fz="sm" fw={600} c="slate.8">
+                              {row.investor}
+                            </Text>
+                            <Text fz={11} c="slate.5">
+                              {row.investment_id}
+                            </Text>
                           </Table.Td>
-                        ))}
-                      </Table.Tr>
-                    ))
+                          <Table.Td style={cell}>
+                            <Badge
+                              variant="light"
+                              color="brand"
+                              radius="sm"
+                              size="sm"
+                              style={{ textTransform: "none" }}
+                            >
+                              v{row.version}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td style={cell}>
+                            {row.amend_date
+                              ? formatInvestorDate(row.amend_date)
+                              : "-"}
+                          </Table.Td>
+                          <Table.Td style={cell}>{row.emis}</Table.Td>
+                          <Table.Td style={{ ...cell, textAlign: "right" }}>
+                            {money(row.principal)}
+                          </Table.Td>
+                          <Table.Td style={{ ...cell, textAlign: "right" }}>
+                            {money(row.interest)}
+                          </Table.Td>
+                          <Table.Td style={{ ...cell, textAlign: "right" }}>
+                            {money(row.penalty)}
+                          </Table.Td>
+                          <Table.Td style={{ ...cell, textAlign: "right" }}>
+                            <Text
+                              fz="xs"
+                              fw={800}
+                              c="slate.9"
+                              style={{ fontVariantNumeric: "tabular-nums" }}
+                            >
+                              {fmtAmount(Number(row.total) || 0)}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td style={cell}>
+                            <Badge
+                              variant="light"
+                              radius="xl"
+                              size="sm"
+                              color={STATUS_COLOR[row.amend_status]}
+                              style={{ textTransform: "none", fontWeight: 700 }}
+                            >
+                              {row.amend_status}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td
+                            style={cell}
+                            onDoubleClick={(e) => e.stopPropagation()}
+                          >
+                            <Group justify="flex-end" gap={4} wrap="nowrap">
+                              <Tooltip label="View" withArrow>
+                                <ActionIcon
+                                  size="sm"
+                                  variant="subtle"
+                                  color="slate"
+                                  radius="md"
+                                  onClick={() => open("view", row)}
+                                >
+                                  <IconEye size={14} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip
+                                label={
+                                  isDraft
+                                    ? "Edit"
+                                    : "Only Draft amendments can be edited"
+                                }
+                                withArrow
+                              >
+                                <ActionIcon
+                                  size="sm"
+                                  variant="subtle"
+                                  color={isDraft ? "brand" : "slate"}
+                                  radius="md"
+                                  disabled={!isDraft}
+                                  style={
+                                    isDraft ? undefined : { opacity: 0.35 }
+                                  }
+                                  onClick={() => open("edit", row)}
+                                >
+                                  <IconPencil size={14} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip
+                                label={
+                                  canDelete
+                                    ? "Delete"
+                                    : "Only Draft or Cancelled amendments can be deleted"
+                                }
+                                withArrow
+                              >
+                                <ActionIcon
+                                  size="sm"
+                                  variant="subtle"
+                                  color={canDelete ? "danger" : "slate"}
+                                  radius="md"
+                                  disabled={!canDelete}
+                                  style={
+                                    canDelete ? undefined : { opacity: 0.35 }
+                                  }
+                                  onClick={() =>
+                                    confirm(
+                                      "Delete Amendment",
+                                      `Delete the ${row.amend_status.toLowerCase()} amendment v${row.version} of ${row.investment_id} (${row.investor})?`,
+                                      "Delete",
+                                      "red",
+                                      () => deleteMutation.mutate(row),
+                                    )
+                                  }
+                                >
+                                  <IconTrash size={14} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Menu
+                                shadow="md"
+                                width={170}
+                                position="bottom-end"
+                                radius="md"
+                                disabled={!isDraft && !isApproved}
+                              >
+                                <Menu.Target>
+                                  <ActionIcon
+                                    size="sm"
+                                    variant="subtle"
+                                    color="slate"
+                                    radius="md"
+                                    aria-label="Actions"
+                                    disabled={!isDraft && !isApproved}
+                                    style={
+                                      isDraft || isApproved
+                                        ? undefined
+                                        : { opacity: 0.35 }
+                                    }
+                                  >
+                                    <IconDotsVertical size={14} />
+                                  </ActionIcon>
+                                </Menu.Target>
+                                <Menu.Dropdown>
+                                  {isDraft && (
+                                    <Menu.Item
+                                      onClick={() =>
+                                        confirm(
+                                          "Approve Amendment",
+                                          `Approve amendment v${row.version} of ${row.investment_id} (${row.investor})? Its schedule becomes the one in use for payouts.`,
+                                          "Approve",
+                                          "green",
+                                          () => approveMutation.mutate(row),
+                                        )
+                                      }
+                                    >
+                                      Approve
+                                    </Menu.Item>
+                                  )}
+                                  {isApproved && (
+                                    <Menu.Item
+                                      color="danger"
+                                      onClick={() =>
+                                        confirm(
+                                          "Cancel Amendment",
+                                          `Cancel amendment v${row.version} of ${row.investment_id}? The investment goes back to the schedule it had before it.`,
+                                          "Cancel Amendment",
+                                          "red",
+                                          () => cancelMutation.mutate(row),
+                                        )
+                                      }
+                                    >
+                                      Cancel
+                                    </Menu.Item>
+                                  )}
+                                </Menu.Dropdown>
+                              </Menu>
+                            </Group>
+                          </Table.Td>
+                        </Table.Tr>
+                      );
+                    })
                   )}
                 </Table.Tbody>
               </Table>
             </Box>
 
-            {/* Pagination Footer */}
+            {/* Pagination */}
             <Group justify="space-between" px="sm" pt="xs">
               <Group
                 gap="sm"
@@ -562,7 +632,9 @@ export function EarningsStatements() {
                       setPageSize(Number(v) || 10);
                       setPage(1);
                     }}
-                    rightSection={chevronDown}
+                    rightSection={
+                      <IconChevronDown size={14} style={{ opacity: 0.6 }} />
+                    }
                     size="xs"
                     radius="xl"
                     w={60}
@@ -572,7 +644,7 @@ export function EarningsStatements() {
               <Pagination
                 total={totalPages}
                 value={page}
-                onChange={(p) => setPage(p)}
+                onChange={setPage}
                 color="brand"
                 size="xs"
                 radius="xl"

@@ -631,7 +631,7 @@ function PayoutBody({
                             nothingFoundMessage={
                               candidatesQuery.isFetching
                                 ? "Searching…"
-                                : "No investment with unpaid EMIs"
+                                : "No investment with unpaid payouts"
                             }
                           />
                         </Grid.Col>
@@ -683,10 +683,10 @@ function PayoutBody({
                           />
                           <Text fz={11} c="slate.5" mt={4}>
                             {v.paymentType === "Pay Dues"
-                              ? "Pays what is owed on the next unpaid EMI."
+                              ? "Pays what is owed on the next unpaid payout."
                               : v.paymentType === "Pay Full"
-                                ? "Pays every unpaid EMI (closes the schedule)."
-                                : "Any amount: the oldest unpaid EMI first, interest before principal."}
+                                ? "Pays every unpaid payout (closes the schedule)."
+                                : "Any amount: the oldest unpaid payout first, interest before principal."}
                           </Text>
                         </Box>
 
@@ -909,7 +909,7 @@ function PayoutBody({
                     />
                     <Box>
                       <Text fz={11} c="slate.5">
-                        Next EMI {next?.number ? `(#${next.number})` : ""}
+                        Next Payout {next?.number ? `(#${next.number})` : ""}
                       </Text>
                       <Text fz="sm" fw={700}>
                         {next
@@ -932,7 +932,7 @@ function PayoutBody({
                     {[
                       ["Principal due", next?.principal ?? 0],
                       ["Interest due", next?.interest ?? 0],
-                      ["Penalty", next?.penalty ?? 0],
+                      ["Penalty due", next?.penalty ?? 0],
                     ].map(([label, value]) => (
                       <Group
                         key={label as string}
@@ -956,7 +956,7 @@ function PayoutBody({
                       }}
                     >
                       <Text fz="sm" fw={800}>
-                        Next EMI due
+                        Next Payout due
                       </Text>
                       <Text fz="sm" fw={800} ff="monospace">
                         {fmtAmount(next?.total ?? 0)}
@@ -964,7 +964,7 @@ function PayoutBody({
                     </Group>
                     <Group justify="space-between" pt={4}>
                       <Text fz="xs" c="slate.5">
-                        All unpaid EMIs ({context.outstanding.emis})
+                        All unpaid payouts ({context.outstanding.emis})
                       </Text>
                       <Text fz="xs" fw={700} ff="monospace">
                         {fmtAmount(context.outstanding.total)}
@@ -1017,7 +1017,7 @@ function PayoutBody({
                           >
                             <Box>
                               <Text fz="xs" fw={700}>
-                                EMI #{a.number ?? "-"} ·{" "}
+                                Payout #{a.number ?? "-"} ·{" "}
                                 {formatInvestorDate(a.payment_date)}
                               </Text>
                               <Text fz={10} c="slate.5">
@@ -1213,7 +1213,7 @@ function ScheduleTable({ context }: { context: PayoutContext | null }) {
     <Stack gap="sm">
       <SimpleGrid cols={{ base: 2, md: 4 }} spacing="sm">
         {[
-          { label: "EMIs", value: String(rows.length), color: "brand" },
+          { label: "Payouts", value: String(rows.length), color: "brand" },
           { label: "Paid", value: String(count("Paid")), color: "success" },
           {
             label: "Partially paid",

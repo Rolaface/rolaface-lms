@@ -181,31 +181,31 @@ export function InvestorReports() {
       // The table's columns and values, as shown on screen.
       const sheet: Record<string, string>[] = report.rows.map((r) => ({
         "Name / Invst ID": `${r.investor} / ${r.investment_id}`,
-        "Invst Amt": money(r.investment_amount),
+        Investment: money(r.investment_amount),
         "Start Date": r.start_date
           ? formatInvestorDate(r.start_date)
           : "Not funded",
         "End Date": r.end_date ? formatInvestorDate(r.end_date) : "-",
         "Fund Recv": money(r.fund_received),
         "Prin Paid": money(r.principal_paid),
-        "Total Int": money(r.total_interest),
+        Interest: money(r.total_interest),
         "Int Paid": money(r.interest_paid),
-        "Total Penal": money(r.total_penalty),
+        Penalty: money(r.total_penalty),
         "Penal Paid": money(r.penalty_paid),
         "Paid out": money(r.amount_paid),
-        Status: `${r.emis_paid}/${r.emis_total} EMIs · ${r.status}`,
+        Status: `${r.emis_paid}/${r.emis_total} Payouts · ${r.status}`,
       }));
       const t = report.totals;
       sheet.push({
         "Name / Invst ID": `Total (${t.investments} investments)`,
-        "Invst Amt": money(t.investment_amount),
+        Investment: money(t.investment_amount),
         "Start Date": "",
         "End Date": "",
         "Fund Recv": money(t.fund_received),
         "Prin Paid": money(t.principal_paid),
-        "Total Int": money(t.total_interest),
+        Interest: money(t.total_interest),
         "Int Paid": money(t.interest_paid),
-        "Total Penal": money(t.total_penalty),
+        Penalty: money(t.total_penalty),
         "Penal Paid": money(t.penalty_paid),
         "Paid out": money(t.amount_paid),
         Status: "",
@@ -314,35 +314,35 @@ export function InvestorReports() {
             progress={pct(totals.amount_paid, totals.total_due)}
           />
           <SummaryCard
-            icon={<IconCoins size={18} />}
-            color="info"
-            label="Principal paid"
-            value={money(totals.principal_paid)}
-            hint={`of ${money(totals.investment_amount)} invested`}
-            progress={pct(totals.principal_paid, totals.investment_amount)}
-          />
-          <SummaryCard
-            icon={<IconPercentage size={18} />}
-            color="grape"
-            label="Interest paid"
-            value={money(totals.interest_paid)}
-            hint={`of ${money(totals.total_interest)} total interest`}
-            progress={pct(totals.interest_paid, totals.total_interest)}
-          />
-          <SummaryCard
-            icon={<IconAlertTriangle size={18} />}
-            color="warning"
-            label="Penalty paid"
-            value={money(totals.penalty_paid)}
-            hint={`of ${money(totals.total_penalty)} total penalty`}
-            progress={pct(totals.penalty_paid, totals.total_penalty)}
-          />
-          <SummaryCard
             icon={<IconHourglass size={18} />}
             color="danger"
             label="Outstanding"
             value={money(totals.outstanding)}
             hint="Still to be paid out to investors"
+          />
+          <SummaryCard
+            icon={<IconCoins size={18} />}
+            color="info"
+            label="Principal obligation"
+            value={money(totals.total_principal)}
+            hint={`${money(totals.principal_paid)} paid`}
+            progress={pct(totals.principal_paid, totals.total_principal)}
+          />
+          <SummaryCard
+            icon={<IconPercentage size={18} />}
+            color="grape"
+            label="Interest obligation"
+            value={money(totals.total_interest)}
+            hint={`${money(totals.interest_paid)} paid`}
+            progress={pct(totals.interest_paid, totals.total_interest)}
+          />
+          <SummaryCard
+            icon={<IconAlertTriangle size={18} />}
+            color="warning"
+            label="Penalty obligation"
+            value={money(totals.total_penalty)}
+            hint={`${money(totals.penalty_paid)} paid`}
+            progress={pct(totals.penalty_paid, totals.total_penalty)}
           />
         </SimpleGrid>
       )}
@@ -482,7 +482,7 @@ export function InvestorReports() {
                   <Table.Tr>
                     <Table.Th style={TH}>Name / Invst ID</Table.Th>
                     <Table.Th style={TH} ta="right">
-                      Invst Amt
+                      Investment
                     </Table.Th>
                     <Table.Th style={TH}>Start Date</Table.Th>
                     <Table.Th style={TH}>End Date</Table.Th>
@@ -493,13 +493,13 @@ export function InvestorReports() {
                       Prin Paid
                     </Table.Th>
                     <Table.Th style={TH} ta="right">
-                      Total Int
+                      Interest
                     </Table.Th>
                     <Table.Th style={TH} ta="right">
                       Int Paid
                     </Table.Th>
                     <Table.Th style={TH} ta="right">
-                      Total Penal
+                      Penalty
                     </Table.Th>
                     <Table.Th style={TH} ta="right">
                       Penal Paid
@@ -554,7 +554,7 @@ export function InvestorReports() {
                         >
                           <Stack gap={4} align="flex-start">
                             <Text fz="xs" fw={700} c="slate.8">
-                              {r.emis_paid}/{r.emis_total} EMIs
+                              {r.emis_paid}/{r.emis_total} Payouts
                             </Text>
                             <StatusBadge status={r.status} size="xs" />
                           </Stack>

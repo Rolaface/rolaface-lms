@@ -1178,12 +1178,12 @@ export function buildPayoutStatementPdf(
   ]);
 
   y = ensure(ctx, y, 30);
-  y = sectionTitle(ctx, y, "EMIs covered by this payment");
+  y = sectionTitle(ctx, y, "Payouts covered by this payment");
   y = table(
     ctx,
     y,
     [
-      { header: "EMI", w: 16, align: "left" },
+      { header: "Payout", w: 16, align: "left" },
       { header: "Due date", w: 32, align: "left" },
       { header: "Interest", w: 30, align: "right" },
       { header: "Penalty", w: 26, align: "right" },
@@ -1210,7 +1210,7 @@ export function buildPayoutStatementPdf(
     [
       { header: "No.", w: 14, align: "left" },
       { header: "Due date", w: 36, align: "left" },
-      { header: "EMI", w: 34, align: "right" },
+      { header: "Payout", w: 34, align: "right" },
       { header: "Paid", w: 34, align: "right" },
       { header: "Remaining", w: 34, align: "right" },
       { header: "Status", w: 28, align: "left" },

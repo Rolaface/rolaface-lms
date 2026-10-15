@@ -48,6 +48,8 @@ export interface ScheduleRow {
   date: Date;
   principal: number;
   interest: number;
+  /** Actual penalty on the instalment (0 until one is charged). */
+  penalty: number;
 }
 
 export interface Schedule {
@@ -344,6 +346,7 @@ export function calcSchedule(s: ModalState): Schedule | null {
       date,
       principal: i === dates.length - 1 ? s.amount : 0,
       interest: perPayment,
+      penalty: 0,
     })),
   };
 }
@@ -396,18 +399,25 @@ export function productLimitWarnings(
   if (!s.productId) return [];
   const name = s.productName || s.productId;
   // The product's range is in the product's basis; compared per annum (a monthly rate is x12), as the backend does.
-  const unit = s.productInterestFrequency === "Monthly" ? "per month" : "per annum";
+  const unit =
+    s.productInterestFrequency === "Monthly" ? "per month" : "per annum";
   const perAnnum = (rate: number, basis: InterestFrequency) =>
     basis === "Monthly" ? rate * 12 : rate;
   const warnings: string[] = [];
   if (s.productMinAmount && s.amount < s.productMinAmount)
-    warnings.push(`Investment amount is below the minimum investment of ${name} (${fmtAmount(s.productMinAmount)}).`);
+    warnings.push(
+      `Investment amount is below the minimum investment of ${name} (${fmtAmount(s.productMinAmount)}).`,
+    );
   if (s.productMaxAmount && s.amount > s.productMaxAmount)
-    warnings.push(`Investment amount is above the maximum investment of ${name} (${fmtAmount(s.productMaxAmount)}).`);
+    warnings.push(
+      `Investment amount is above the maximum investment of ${name} (${fmtAmount(s.productMaxAmount)}).`,
+    );
   if (
     s.productMaxRate &&
-    (perAnnum(s.rate, s.interestFrequency) < perAnnum(s.productMinRate, s.productInterestFrequency) ||
-      perAnnum(s.rate, s.interestFrequency) > perAnnum(s.productMaxRate, s.productInterestFrequency))
+    (perAnnum(s.rate, s.interestFrequency) <
+      perAnnum(s.productMinRate, s.productInterestFrequency) ||
+      perAnnum(s.rate, s.interestFrequency) >
+        perAnnum(s.productMaxRate, s.productInterestFrequency))
   )
     warnings.push(
       `Interest rate is outside the range of ${name} (${s.productMinRate}% to ${s.productMaxRate}% ${unit}).`,
@@ -492,8 +502,10 @@ export function apiProductFields(
     productMaxRate: Number(p.maximum_interest_rate) || 0,
     productMinTenure: Number(p.minimum_tenure) || 0,
     productMaxTenure: Number(p.maximum_tenure) || 0,
-    interestFrequency: p.interest_frequency === "Monthly" ? "Monthly" : "Yearly",
-    productInterestFrequency: p.interest_frequency === "Monthly" ? "Monthly" : "Yearly",
+    interestFrequency:
+      p.interest_frequency === "Monthly" ? "Monthly" : "Yearly",
+    productInterestFrequency:
+      p.interest_frequency === "Monthly" ? "Monthly" : "Yearly",
   };
 }
 
@@ -570,7 +582,8 @@ export function stateFromRecord(r: InvestorFlowRecord): ModalState {
     maturity: r.maturity_date,
     penaltyApplicable: penalty > 0,
     penaltyRate: penalty > 0 ? penalty : createInitialState().penaltyRate,
-    interestFrequency: r.interest_frequency === "Monthly" ? "Monthly" : "Yearly",
+    interestFrequency:
+      r.interest_frequency === "Monthly" ? "Monthly" : "Yearly",
     contractNo: r.name,
     // A saved investment has its number (shown in the modal header instead of "Pending").
     investmentNo: r.name,
@@ -631,6 +644,7 @@ export function scheduleFromEarning(e: InvestorEarning): Schedule | null {
       date: new Date(r.payment_date),
       principal: Number(r.principal_amount) || 0,
       interest: Number(r.interest_amount) || 0,
+      penalty: Number(r.penalty_amount) || 0,
     })),
   };
 }
@@ -645,6 +659,8 @@ export function scheduleFromApi(res: InvestorFlowSchedule): Schedule {
       date: new Date(r.date),
       principal: r.principal,
       interest: r.interest,
+      // A new schedule has no penalty yet (nothing is late).
+      penalty: Number((r as { penalty?: number }).penalty) || 0,
     })),
   };
 }

@@ -17,7 +17,7 @@ import {
 import {
   IconAlertTriangle,
   IconCalendarDue,
-  IconChartDonut,
+  IconCalendarTime,
   IconInfoCircle,
   IconPackage,
   IconTrophy,
@@ -249,7 +249,7 @@ export function ReportInsights({
       <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
         <PanelCard
           title="Overdue"
-          info="EMIs whose date has passed and that are not fully paid."
+          info="Scheduled payouts whose date has passed and that are not fully paid."
           right={
             <ThemeIcon
               size={26}
@@ -263,7 +263,11 @@ export function ReportInsights({
         >
           <Group grow gap="xs" mb="sm">
             {[
-              { label: "EMIs", value: String(overdue.emis), color: "danger" },
+              {
+                label: "Payouts",
+                value: String(overdue.emis),
+                color: "danger",
+              },
               {
                 label: "Investments",
                 value: String(overdue.investments),
@@ -310,7 +314,7 @@ export function ReportInsights({
                       {o.investor}
                     </Text>
                     <Text fz={10.5} c="slate.5">
-                      {o.investment_id} · {o.emis} EMI · {o.days}d
+                      {o.investment_id} · {o.emis} Payout · {o.days}d
                     </Text>
                   </Box>
                   <Text
@@ -332,7 +336,7 @@ export function ReportInsights({
       <Grid.Col span={{ base: 12, lg: 6 }}>
         <PanelCard
           title="Scheduled vs Actual Payouts"
-          info="Per month: EMIs due (scheduled) and approved payouts by value date (actual). Months still to come show what is scheduled."
+          info="Per month: payouts due (scheduled) and approved payouts by value date (actual). Months still to come show what is scheduled."
           right={
             <Group gap={6}>
               <Badge size="xs" variant="dot" color="brand" radius="sm">
@@ -435,86 +439,144 @@ export function ReportInsights({
         </PanelCard>
       </Grid.Col>
 
-     {/* Paid out breakdown: principal / interest / penalty */}
-<Grid.Col span={{ base: 12, md: 4 }}>
-  <PanelCard
-    title="Paid Out Breakdown"
-    info="What has been paid out to investors, split into principal, interest and penalty."
-    right={
-      <Box ta="right">
-        <Text
-          fz="sm"
-          fw={800}
-          c="indigo.6"
-          lh={1.2}
-          style={{ whiteSpace: "nowrap" }}
+      {/* Paid out breakdown: principal / interest / penalty */}
+      <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
+        <PanelCard
+          title="Paid Out Breakdown"
+          info="What has been paid out to investors, split into principal, interest and penalty."
+          right={
+            <Box ta="right">
+              <Text
+                fz="sm"
+                fw={800}
+                c="indigo.6"
+                lh={1.2}
+                style={{ whiteSpace: "nowrap" }}
+              >
+                {money(paidOut)}
+              </Text>
+              <Text fz={10} fw={500} c="dimmed">
+                Total Paid Out
+              </Text>
+            </Box>
+          }
         >
-          {money(paidOut)}
-        </Text>
-        <Text fz={10} fw={500} c="dimmed">
-          Total Paid Out
-        </Text>
-      </Box>
-    }
-  >
-    {paidOut <= 0 ? (
-      <Text fz="xs" c="dimmed" ta="center" py="md">
-        Nothing has been paid out yet.
-      </Text>
-    ) : (
-      <Group wrap="nowrap" gap="md" align="center">
-        <RingProgress
-          size={104}
-          thickness={10}
-          style={{ flexShrink: 0 }}
-          sections={breakdown.map((b) => ({
-            value: (b.value / paidOut) * 100,
-            color: b.color,
-            tooltip: `${b.label} ${money(b.value)}`,
-          }))}
-        />
+          {paidOut <= 0 ? (
+            <Text fz="xs" c="dimmed" ta="center" py="md">
+              Nothing has been paid out yet.
+            </Text>
+          ) : (
+            <Group wrap="nowrap" gap="md" align="center">
+              <RingProgress
+                size={104}
+                thickness={10}
+                style={{ flexShrink: 0 }}
+                sections={breakdown.map((b) => ({
+                  value: (b.value / paidOut) * 100,
+                  color: b.color,
+                  tooltip: `${b.label} ${money(b.value)}`,
+                }))}
+              />
 
-        <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
-          {breakdown.map((b) => (
-            <Group
-              key={b.label}
-              justify="space-between"
-              wrap="nowrap"
-              gap="xs"
-            >
-              <Group gap={6} wrap="nowrap">
-                <Box
-                  w={9}
-                  h={9}
-                  style={{ borderRadius: 3, background: cv(b.color, 6) }}
-                />
-                <Text fz="xs" c="slate.6">
-                  {b.label}
-                </Text>
-              </Group>
-              <Box ta="right">
-                <Text
-                  fz="xs"
-                  fw={700}
-                  c="slate.8"
-                  style={{ whiteSpace: "nowrap" }}
-                >
-                  {money(b.value)}
-                </Text>
-                <Text fz={10} c="slate.5">
-                  {((b.value / paidOut) * 100).toFixed(1)}%
-                </Text>
-              </Box>
+              <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
+                {breakdown.map((b) => (
+                  <Group
+                    key={b.label}
+                    justify="space-between"
+                    wrap="nowrap"
+                    gap="xs"
+                  >
+                    <Group gap={6} wrap="nowrap">
+                      <Box
+                        w={9}
+                        h={9}
+                        style={{ borderRadius: 3, background: cv(b.color, 6) }}
+                      />
+                      <Text fz="xs" c="slate.6">
+                        {b.label}
+                      </Text>
+                    </Group>
+                    <Box ta="right">
+                      <Text
+                        fz="xs"
+                        fw={700}
+                        c="slate.8"
+                        style={{ whiteSpace: "nowrap" }}
+                      >
+                        {money(b.value)}
+                      </Text>
+                      <Text fz={10} c="slate.5">
+                        {((b.value / paidOut) * 100).toFixed(1)}%
+                      </Text>
+                    </Box>
+                  </Group>
+                ))}
+              </Stack>
             </Group>
-          ))}
-        </Stack>
-      </Group>
-    )}
-  </PanelCard>
-</Grid.Col>
+          )}
+        </PanelCard>
+      </Grid.Col>
+
+      {/* Upcoming EMIs (the 3 soonest unpaid EMIs from today) */}
+      <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
+        <PanelCard
+          title="Upcoming Payouts"
+          right={
+            <ThemeIcon size={26} radius="md" variant="light" color="brand">
+              <IconCalendarTime size={15} />
+            </ThemeIcon>
+          }
+        >
+          {insights.upcoming_emis.length === 0 ? (
+            <Text fz="xs" c="dimmed" ta="center" py="md">
+              No payout is due.
+            </Text>
+          ) : (
+            <Stack gap={6}>
+              {insights.upcoming_emis.slice(0, 3).map((e) => (
+                <Group
+                  key={`${e.investment_id}-${e.emi_number}`}
+                  justify="space-between"
+                  wrap="nowrap"
+                  px={10}
+                  py={6}
+                  style={{
+                    borderRadius: "var(--mantine-radius-md)",
+                    border: `1px solid ${cv("slate", 2)}`,
+                  }}
+                >
+                  <Box style={{ minWidth: 0 }}>
+                    <Text fz="xs" fw={700} c="slate.8" truncate>
+                      {e.investor}
+                    </Text>
+                    <Text fz={10.5} c="slate.5">
+                      {e.investment_id} · Payout #{e.emi_number} ·{" "}
+                      {formatInvestorDate(e.payment_date)}
+                    </Text>
+                  </Box>
+                  <Stack gap={0} align="flex-end">
+                    <Badge
+                      size="xs"
+                      variant="light"
+                      color={e.days_left <= 7 ? "warning" : "brand"}
+                      radius="sm"
+                      style={{ textTransform: "none" }}
+                    >
+                      {e.days_left === 0 ? "Today" : `${e.days_left}d left`}
+                    </Badge>
+                    <Text fz={10.5} fw={700} c="slate.7" mt={2}>
+                      {money(e.amount)}
+                    </Text>
+                  </Stack>
+                </Group>
+              ))}
+            </Stack>
+          )}
+        </PanelCard>
+      </Grid.Col>
 
       {/* Top investors */}
-      <Grid.Col span={{ base: 12, md: 4 }}>
+      <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
         <PanelCard
           title="Top Investors"
           info="By amount invested."
@@ -534,7 +596,7 @@ export function ReportInsights({
       </Grid.Col>
 
       {/* Top products */}
-      <Grid.Col span={{ base: 12, md: 4 }}>
+      <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
         <PanelCard
           title="Top Products"
           info="By amount invested."
