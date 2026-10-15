@@ -210,7 +210,7 @@ export function InvestorPayouts() {
       queryClient.invalidateQueries({ queryKey: ["investorNotifications"] });
       showApprovalResult({
         heading: "Payout Approved",
-        body: `The payout to ${row.investor} is approved, its Journal Entry is posted and the EMIs are updated.`,
+        body: `The payout to ${row.investor} is approved, its Journal Entry is posted and the scheduled payouts are updated.`,
       });
     },
     onError: (error: unknown) => showError("Approve Failed", error),
@@ -667,7 +667,7 @@ export function InvestorPayouts() {
                                       onClick={() =>
                                         confirm(
                                           "Cancel Payout",
-                                          `Cancel the approved payout of ${fmtAmount(row.payment_amount)}? Its Journal Entry ${row.journal_entry ?? ""} is cancelled and the EMIs get back what it paid.`,
+                                          `Cancel the approved payout of ${fmtAmount(row.payment_amount)}? Its Journal Entry ${row.journal_entry ?? ""} is cancelled and the scheduled payouts get back what it paid.`,
                                           "Cancel Payout",
                                           "red",
                                           () => cancelMutation.mutate(row),

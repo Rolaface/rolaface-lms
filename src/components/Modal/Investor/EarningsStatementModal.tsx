@@ -14,6 +14,7 @@ import {
   Select,
   Paper,
   SimpleGrid,
+  Stack,
   Switch,
   Table,
   Text,
@@ -25,9 +26,13 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  createAmendment,
+  getAmendCandidates,
+  getAmendment,
   getInvestorEarningById,
-  updateInvestorEarning,
+  updateAmendment,
 } from "../../../api/Investor/investorFlowApi";
+import { useDebouncedValue } from "@mantine/hooks";
 import {
   type InvestorEarning,
   type InvestorEarningDetails,
@@ -88,8 +93,27 @@ const draftFromEarning = (e: InvestorEarning): EarningDraft => ({
   rows: e.schedule.map((r) => ({ ...r })),
 });
 
+/** Totals the schedule cannot go above when it is amended (those of the schedule in use). */
+type AmendLimits = Partial<
+  Record<"principal_amount" | "interest_amount", number>
+>;
+const LIMIT_LABEL = {
+  principal_amount: "principal",
+  interest_amount: "interest",
+} as const;
+
+const sumOf = (
+  rows: InvestorEarningScheduleRow[],
+  field: ScheduleAmountField,
+) =>
+  Math.round(rows.reduce((a, r) => a + (Number(r[field]) || 0), 0) * 100) / 100;
+
 /** First problem in the schedule rows (the details are read-only), or "" when they can be saved. */
-function validateDraft({ rows }: EarningDraft): string {
+function validateDraft(
+  { rows }: EarningDraft,
+  limits: AmendLimits = {},
+  fmtAmount: (v: number) => string = String,
+): string {
   for (const r of rows) {
     if (!r.payment_date) return `Row ${r.idx}: enter the payment date.`;
     const amounts = [
@@ -100,6 +124,11 @@ function validateDraft({ rows }: EarningDraft): string {
     ];
     if (amounts.some((v) => !(Number(v) >= 0)))
       return `Row ${r.idx}: amounts cannot be negative.`;
+  }
+  for (const field of ["principal_amount", "interest_amount"] as const) {
+    const limit = limits[field];
+    if (limit !== undefined && sumOf(rows, field) > limit + 0.005)
+      return `Total ${LIMIT_LABEL[field]} (${fmtAmount(sumOf(rows, field))}) cannot be more than the schedule's total ${LIMIT_LABEL[field]} (${fmtAmount(limit)}).`;
   }
   return "";
 }
@@ -128,6 +157,8 @@ interface EarningsStatementsProps {
   history?: InvestorScheduleVersion[];
   /** The saved current schedule (compared with the latest history version). */
   currentRows?: InvestorEarningScheduleRow[];
+  /** Totals principal / interest cannot go above (an edited row can take only what the others leave). */
+  limits?: AmendLimits;
 }
 
 type CompareField =
@@ -574,6 +605,7 @@ function EarningsStatements({
   version = 1,
   history = [],
   currentRows = [],
+  limits = {},
 }: EarningsStatementsProps) {
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const fmtAmount = (value: number) =>
@@ -628,6 +660,23 @@ function EarningsStatements({
     row.status !== "Paid" &&
     !(row.status === "Accrued" && ACCRUED_LOCKED_FIELDS.has(field));
 
+  /** Most a row can take for principal / interest: the total less what the other rows hold. */
+  const maxFor = (
+    row: InvestorEarningScheduleRow,
+    field: ScheduleAmountField,
+  ) => {
+    const limit =
+      field === "principal_amount" || field === "interest_amount"
+        ? limits[field]
+        : undefined;
+    if (limit === undefined) return undefined;
+    const others = sumOf(
+      rows.filter((r) => r.name !== row.name),
+      field,
+    );
+    return Math.max(0, Math.round((limit - others) * 100) / 100);
+  };
+
   const amountCell = (
     row: InvestorEarningScheduleRow,
     field: ScheduleAmountField,
@@ -637,6 +686,8 @@ function EarningsStatements({
         size="xs"
         radius="md"
         min={0}
+        max={maxFor(row, field)}
+        clampBehavior={maxFor(row, field) === undefined ? "blur" : "strict"}
         decimalScale={2}
         thousandSeparator=","
         hideControls
@@ -932,50 +983,73 @@ export function EarningsStatementsView({
 /* Modal                                                               */
 /* ------------------------------------------------------------------ */
 
+/** create: pick an investment, then amend its schedule in use; edit: a Draft amendment; view: any amendment. */
+export type AmendMode = "create" | "edit" | "view";
+
 interface EarningsStatementsModalProps {
   opened: boolean;
   onClose: () => void;
-  /** Investor Flow ID (Status Received). */
-  investorFlowId: string;
-  /** View (Eye) when true, edit (Pencil) when false. */
-  readOnly?: boolean;
-  /** Called after the edits are saved. */
+  mode: AmendMode;
+  /** Investor Flow ID (edit / view; chosen on the screen for create). */
+  investorFlowId?: string | null;
+  /** Amendment version (edit / view). */
+  version?: number | null;
+  /** Called after the amendment is saved. */
   onSaved?: () => void;
   /** Minimizes the modal to the dock. */
   onMinimize: () => void;
 }
 
 const STAGE_INDEX = 1;
+const MODE_TITLE: Record<AmendMode, string> = {
+  create: "Create Amend",
+  edit: "Edit Amend",
+  view: "View Amend",
+};
 
-/** Stage 2 — Amend Payouts: view / amend the schedule and its versions (no side nav). */
+/** Stage 2 — Amend Payouts: create / edit / view an amendment of the schedule (no side nav). */
 export function EarningsStatementsModal({
   opened,
   onClose,
-  investorFlowId,
-  readOnly = false,
+  mode,
+  investorFlowId = null,
+  version = null,
   onSaved,
   onMinimize,
 }: EarningsStatementsModalProps) {
-  const earningQuery = useQuery({
-    queryKey: ["investorEarning", investorFlowId],
-    queryFn: () => getInvestorEarningById(investorFlowId),
-    enabled: opened,
-  });
-  const flowQuery = useQuery({
-    queryKey: ["investorFlow", investorFlowId],
-    queryFn: () => loadInvestorFlowState(investorFlowId),
-    enabled: opened,
+  // Create: the investment is chosen first (like Add Payout); nothing is shown until then.
+  const [chosenId, setChosenId] = useState<string | null>(investorFlowId);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebouncedValue(search, 300);
+  const candidatesQuery = useQuery({
+    queryKey: ["amendCandidates", debouncedSearch],
+    queryFn: () => getAmendCandidates(debouncedSearch.trim() || undefined),
+    enabled: opened && mode === "create" && !chosenId,
+    staleTime: 0,
   });
 
-  if (earningQuery.data && flowQuery.data) {
+  const earningQuery = useQuery({
+    queryKey: ["amendment", chosenId, version ?? "new"],
+    queryFn: () => getAmendment(chosenId as string, version),
+    enabled: opened && !!chosenId,
+    retry: false,
+  });
+  const flowQuery = useQuery({
+    queryKey: ["investorFlow", chosenId],
+    queryFn: () => loadInvestorFlowState(chosenId as string),
+    enabled: opened && !!chosenId,
+  });
+
+  if (chosenId && earningQuery.data && flowQuery.data) {
     return (
       <EarningsStage
         key={earningQuery.dataUpdatedAt}
         opened={opened}
         onClose={onClose}
         onMinimize={onMinimize}
-        investorFlowId={investorFlowId}
-        readOnly={readOnly}
+        mode={mode}
+        investorFlowId={chosenId}
+        version={version}
         onSaved={onSaved}
         earning={earningQuery.data}
         flowState={flowQuery.data}
@@ -991,17 +1065,62 @@ export function EarningsStatementsModal({
       onMinimize={onMinimize}
       stageIndex={STAGE_INDEX}
       state={createInitialState()}
-      title={readOnly ? "View Amend Payouts" : "Amend Payouts"}
+      title={MODE_TITLE[mode]}
     >
-      <Group justify="center" py="xl">
-        {error ? (
-          <Text fz="sm" c="red">
-            {parseFrappeError(error)}
-          </Text>
-        ) : (
-          <Loader size="sm" color="brand" />
-        )}
-      </Group>
+      {!chosenId ? (
+        <Box p="md" maw={720}>
+          <Select
+            label="Investment"
+            description="Search by investment ID, investor name, mobile, customer ID or email"
+            inputWrapperOrder={["label", "input", "description", "error"]}
+            placeholder="Search investment"
+            withAsterisk
+            searchable
+            clearable
+            size="sm"
+            radius="md"
+            data={(candidatesQuery.data ?? []).map((c) => ({
+              value: c.id,
+              label: `${c.id} · ${c.investor} · ${c.investor_email || c.investor_mobile || c.investor_id} · ${c.emis_paid}/${c.emis} payouts paid`,
+            }))}
+            value={null}
+            onChange={(value) => value && setChosenId(value)}
+            searchValue={search}
+            onSearchChange={setSearch}
+            filter={({ options }) => options}
+            rightSection={
+              candidatesQuery.isFetching ? <Loader size={14} /> : undefined
+            }
+            nothingFoundMessage={
+              candidatesQuery.isFetching
+                ? "Searching…"
+                : "No investment can be amended (or it already has a Draft amendment)"
+            }
+          />
+        </Box>
+      ) : (
+        <Group justify="center" py="xl">
+          {error ? (
+            <Stack align="center" gap="sm">
+              <Text fz="sm" c="red">
+                {parseFrappeError(error)}
+              </Text>
+              {mode === "create" && (
+                <Button
+                  size="xs"
+                  radius="xl"
+                  variant="default"
+                  onClick={() => setChosenId(null)}
+                >
+                  Choose another investment
+                </Button>
+              )}
+            </Stack>
+          ) : (
+            <Loader size="sm" color="brand" />
+          )}
+        </Group>
+      )}
     </StageShell>
   );
 }
@@ -1010,16 +1129,18 @@ function EarningsStage({
   opened,
   onClose,
   onMinimize,
+  mode,
   investorFlowId,
-  readOnly,
+  version,
   onSaved,
   earning,
   flowState,
-}: Omit<EarningsStatementsModalProps, "readOnly"> & {
-  readOnly: boolean;
+}: Omit<EarningsStatementsModalProps, "investorFlowId"> & {
+  investorFlowId: string;
   earning: InvestorEarning;
   flowState: ModalState;
 }) {
+  const readOnly = mode === "view";
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const fmtAmount = (value: number) =>
     formatAmount(companyCurrency, value, { withSymbol: true });
@@ -1042,18 +1163,18 @@ function EarningsStage({
     (earning.schedule.length > 0 &&
       earning.schedule.every((r) => r.status === "Paid"));
   const editable = canPay && !expired && !allPaid;
-  const draftError = editable ? validateDraft(draft) : "";
+  // An amendment cannot take the schedule's principal / interest above that of the schedule in use.
+  const limits: AmendLimits = earning.in_use_totals ?? {
+    principal_amount: sumOf(earning.schedule, "principal_amount"),
+    interest_amount: sumOf(earning.schedule, "interest_amount"),
+  };
+  const draftError = editable ? validateDraft(draft, limits, fmtAmount) : "";
   const isDirty =
     JSON.stringify(draft) !== JSON.stringify(draftFromEarning(earning));
   const refreshEarning = () => {
-    queryClient.invalidateQueries({
-      queryKey: ["investorEarning", investorFlowId],
-    });
-    queryClient.invalidateQueries({ queryKey: ["investorEarnings"] });
-    queryClient.invalidateQueries({ queryKey: ["investorFlows"] });
-    queryClient.invalidateQueries({
-      queryKey: ["investorFlow", investorFlowId],
-    });
+    queryClient.invalidateQueries({ queryKey: ["amendments"] });
+    queryClient.invalidateQueries({ queryKey: ["amendCandidates"] });
+    queryClient.invalidateQueries({ queryKey: ["amendment", investorFlowId] });
   };
 
   const showFailure = (heading: string, error: any) =>
@@ -1065,34 +1186,39 @@ function EarningsStage({
       buttons: [{ label: "Close", color: "red" }],
     });
 
+  // Saved as a Draft amendment (create) or the Draft is updated (edit); it is used once approved.
   const saveMutation = useMutation({
-    mutationFn: () =>
-      updateInvestorEarning({
-        id: investorFlowId,
-        payload: {
-          schedule: draft.rows.map((row) => ({
-            name: row.name,
-            payment_date: row.payment_date,
-            principal_amount: row.principal_amount,
-            interest_amount: row.interest_amount,
-            penalty_amount: row.penalty_amount,
-            total_payment: row.total_payment,
-          })),
-        },
-      }),
+    retry: false,
+    mutationFn: () => {
+      const payload = {
+        schedule: draft.rows.map((row) => ({
+          name: row.name,
+          payment_date: row.payment_date,
+          principal_amount: row.principal_amount,
+          interest_amount: row.interest_amount,
+          penalty_amount: row.penalty_amount,
+          total_payment: row.total_payment,
+        })),
+      };
+      return mode === "edit" && version
+        ? updateAmendment({ id: investorFlowId, version, payload })
+        : createAmendment({ id: investorFlowId, payload });
+    },
     onSuccess: () => {
       refreshEarning();
       onClose();
       openCommonModal({
-        heading: "Payouts Amended",
+        heading:
+          mode === "edit" ? "Amendment Updated" : "Amendment Saved as Draft",
         subtitle: "",
-        body: "The repayment schedule has been updated successfully.",
+        body: "Approve it from the Amend Payouts list to put the amended schedule in use.",
         color: "green",
         buttons: [{ label: "Close", color: "green" }],
       });
       onSaved?.();
     },
-    onError: (error: any) => showFailure("Update Failed", error),
+    onError: (error: any) =>
+      showFailure(mode === "edit" ? "Update Failed" : "Save Failed", error),
   });
 
   let footer;
@@ -1112,7 +1238,7 @@ function EarningsStage({
           loading={saveMutation.isPending}
           onClick={() => saveMutation.mutate()}
         >
-          Save
+          {mode === "edit" ? "Update Draft" : "Save as Draft"}
         </Button>
       </>
     );
@@ -1125,7 +1251,7 @@ function EarningsStage({
       onMinimize={onMinimize}
       stageIndex={STAGE_INDEX}
       state={flowState}
-      title={editable ? "Amend Payouts" : "View Amend Payouts"}
+      title={MODE_TITLE[mode]}
       footer={footer}
       headerItems={[
         {
@@ -1165,13 +1291,13 @@ function EarningsStage({
         className="inv-content"
         style={{ display: "flex", flexDirection: "column", overflow: "auto" }}
       >
-        {allPaid && (
+        {!readOnly && allPaid && (
           <Alert variant="light" color="success" radius="md" mb="md">
             Every payout of this investment has been made (Payment Status:
             Paid). The payouts can only be viewed.
           </Alert>
         )}
-        {expired && (
+        {!readOnly && expired && (
           <Alert variant="light" color="danger" radius="md" mb="md">
             This investment has Expired: its maturity date has passed with money
             still due. The schedule can no longer be edited.
@@ -1182,6 +1308,7 @@ function EarningsStage({
           version={earning.schedule_version}
           history={earning.schedule_history}
           currentRows={earning.schedule}
+          limits={limits}
           onChange={editable ? setDraft : undefined}
           onViewAccounting={(row) => {
             // Investor 360: this investment's Repayments, with the payout's accounting open.
