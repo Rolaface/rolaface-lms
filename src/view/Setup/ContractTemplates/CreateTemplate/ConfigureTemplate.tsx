@@ -31,6 +31,8 @@ interface ConfigureTemplateProps {
   onNext: (configData?: any) => void;
   onPrev: () => void;
   onCancel: () => void;
+  isView?: boolean;
+  submitLabel?: string;
 }
 
 interface TemplateField {
@@ -45,6 +47,8 @@ export const ConfigureTemplate: React.FC<ConfigureTemplateProps> = ({
   onNext,
   onPrev,
   onCancel,
+  isView = false,
+  submitLabel,
 }) => {
   const [zoom, setZoom] = useState(100);
   const [previewOpened, setPreviewOpened] = useState(false);
@@ -321,15 +325,17 @@ export const ConfigureTemplate: React.FC<ConfigureTemplateProps> = ({
                   Configure Template Fields
                 </Text>
               </Group>
-              <Button
-                variant="subtle"
-                color="brand"
-                size="xs"
-                leftSection={<IconPlus size={14} />}
-                onClick={() => setCustomFieldModalOpened(true)}
-              >
-                Add Field
-              </Button>
+              {!isView && (
+                <Button
+                  variant="subtle"
+                  color="brand"
+                  size="xs"
+                  leftSection={<IconPlus size={14} />}
+                  onClick={() => setCustomFieldModalOpened(true)}
+                >
+                  Add Field
+                </Button>
+              )}
             </Group>
             <Text size="xs" c="slate.5" mb="xs" style={{ flexShrink: 0 }}>
               Map document placeholders to contract variable fields.
@@ -408,6 +414,7 @@ export const ConfigureTemplate: React.FC<ConfigureTemplateProps> = ({
                           data={allPlaceholders}
                           value={mapped || field.placeholder}
                           onChange={(val) => updateMapping(field.name, val)}
+                          disabled={isView}
                           styles={{
                             input: {
                               fontFamily: 'monospace',
@@ -423,7 +430,7 @@ export const ConfigureTemplate: React.FC<ConfigureTemplateProps> = ({
                             variant="subtle"
                             color="red"
                             onClick={() => handleRemoveField(field.name)}
-                            disabled={field.required}
+                            disabled={isView || field.required}
                             title={field.required ? 'Required field' : 'Remove field'}
                           >
                             <IconTrash size={14} />
@@ -518,17 +525,25 @@ export const ConfigureTemplate: React.FC<ConfigureTemplateProps> = ({
             Back
           </Button>
           <Group gap="sm">
-            <Button variant="default" size="sm" radius="md" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              radius="md"
-              color="brand"
-              onClick={() => onNext({ fields, mappings })}
-            >
-              Create Template
-            </Button>
+            {isView ? (
+              <Button variant="default" size="sm" radius="md" onClick={onCancel}>
+                Close
+              </Button>
+            ) : (
+              <>
+                <Button variant="default" size="sm" radius="md" onClick={onCancel}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  radius="md"
+                  color="brand"
+                  onClick={() => onNext({ fields, mappings })}
+                >
+                  {submitLabel || 'Create Template'}
+                </Button>
+              </>
+            )}
           </Group>
         </Group>
       </Box>
