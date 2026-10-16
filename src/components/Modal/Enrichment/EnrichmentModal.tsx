@@ -293,7 +293,6 @@ export function EnrichmentWorkspace({
   const [approvedAmount, setApprovedAmount] = useState<number>(
     () =>
       Number(application.approved_amount) ||
-      Number(application.prescreening_data?.confirmed_amount) ||
       [Number(application.requested_amount), eligibleAmount].filter((amount) => amount > 0).sort((a, b) => a - b)[0] ||
       0,
   );

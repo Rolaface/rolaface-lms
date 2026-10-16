@@ -18,7 +18,14 @@ export interface ApplicationAddress {
   pincode?: string | null;
 }
 
-export interface FinancialItem {
+export interface FacilityDetails {
+  institution?: string;
+  outstanding?: number;
+  status?: string;
+  origin?: "bureau" | "manual";
+}
+
+export interface FinancialItem extends FacilityDetails {
   source: string;
   monthly_amount: number;
 }
@@ -201,10 +208,7 @@ export interface ProductAssignment {
   documents: { document_name: string; is_required: number }[] | null;
 }
 
-export interface FinancialLine {
-  source: string;
-  monthly_amount: number;
-}
+export type FinancialLine = FinancialItem;
 
 export interface EvaluationOverrides {
   credit_score?: number;

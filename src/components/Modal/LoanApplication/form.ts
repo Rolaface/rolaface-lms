@@ -2,6 +2,7 @@ import type {
   ApplicantType,
   ApplicationAddress,
   ApplicationDocument,
+  FacilityDetails,
   FinancialItem,
   LoanApplication,
   LoanApplicationPayload,
@@ -46,7 +47,7 @@ export interface CollateralEntry {
   description: string;
 }
 
-export interface FinancialEntry {
+export interface FinancialEntry extends FacilityDetails {
   source: string;
   monthly_amount: number | "";
 }
@@ -309,10 +310,10 @@ const toAddress = (address_type: ApplicationAddress["address_type"], address: Ad
   pincode: text(address.pincode),
 });
 
-const toFinancialItems = (entries: FinancialEntry[]): FinancialItem[] =>
+export const toFinancialItems = (entries: FinancialEntry[]): FinancialItem[] =>
   entries
     .filter((entry) => entry.monthly_amount !== "" && entry.monthly_amount !== null)
-    .map((entry) => ({ source: entry.source, monthly_amount: Number(entry.monthly_amount) }));
+    .map((entry) => ({ ...entry, monthly_amount: Number(entry.monthly_amount) }));
 
 export function buildAddresses(values: LoanApplicationValues): ApplicationAddress[] {
   const addresses: ApplicationAddress[] = [];
@@ -414,7 +415,7 @@ const fileStandIn = (url: string, existingUrls: WeakMap<File, string>) => {
   return file;
 };
 
-const mergeFinancials = (sources: string[], items: FinancialItem[] | undefined): FinancialEntry[] => {
+export const mergeFinancials = (sources: string[], items: FinancialItem[] | undefined): FinancialEntry[] => {
   const amounts = new Map((items ?? []).map((item) => [item.source, item.monthly_amount]));
   return [
     ...sources.map((source) => ({ source, monthly_amount: amounts.get(source) ?? ("" as const) })),
