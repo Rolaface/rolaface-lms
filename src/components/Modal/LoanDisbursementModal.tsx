@@ -91,7 +91,7 @@ const MODE_TEXT = {
   edit: {
     title: "Edit Disbursement",
     subtitle: "Edit the details of this disbursement.",
-    submit: "Update Disbursement",
+    submit: "Submit",
   },
   view: {
     title: "View Disbursement",
