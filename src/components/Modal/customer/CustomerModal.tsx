@@ -1176,7 +1176,7 @@ if (idDocs.length > 0) {
               ? isViewMode
                 ? "Next"
                 : "Save & Continue"
-              : "Save"
+              : "Submit"
           }
           onSubmit={
             !isLastStep
