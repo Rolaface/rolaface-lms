@@ -22,10 +22,12 @@ import {
   Modal,
   Textarea,
   ThemeIcon,
+  Divider,
 } from '@mantine/core';
 import {
   IconSearch,
   IconFileDescription,
+  IconFileText,
   IconCircleCheck,
   IconClock,
   IconLink,
@@ -48,6 +50,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { openCommonModal } from '../../../components/Modal/AlertModal';
 import { ModalFooter } from '../../../components/shared/ModalFooter';
 import { createTemplateModal } from '../../../components/Modal/createTemplateModalStore';
+import { formatDate } from '../../../utils/formatDate';
 import {
   useContractTemplateStore,
   type TemplateItem,
@@ -56,6 +59,13 @@ import {
 } from '../../../store/contractTemplateStore';
 
 export type { TemplateItem };
+
+function formatDisplayDate(val?: string): string {
+  if (!val) return '—';
+  if (/^\d{2}-[A-Za-z]{3}-\d{4}$/.test(val)) return val;
+  const formatted = formatDate(val);
+  return formatted || val;
+}
 
 
 const PRODUCT_OPTIONS = [
@@ -146,13 +156,6 @@ export function ContractTemplateManagement() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Modal states
-  const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateItem | null>(null);
-
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState<TemplateItem | null>(null);
-  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
   const getBadgeColor = (type: string) => {
     switch (type) {
@@ -239,40 +242,11 @@ export function ContractTemplateManagement() {
 
   // Actions
   const handleView = (template: TemplateItem) => {
-    setSelectedTemplate(template);
-    setViewModalOpen(true);
+    createTemplateModal.open({ editId: template.id, isView: true });
   };
 
   const handleEdit = (template: TemplateItem) => {
-    setEditForm({ ...template });
-    setEditErrors({});
-    setEditModalOpen(true);
-  };
-
-  const handleSaveEdit = () => {
-    if (!editForm) return;
-    const errors: Record<string, string> = {};
-    if (!editForm.name.trim()) errors.name = 'Template name is required';
-    if (!editForm.bank.trim()) errors.bank = 'Bank / NBFC is required';
-    if (!editForm.product.trim()) errors.product = 'Loan product is required';
-    if (!editForm.effectiveDate.trim()) errors.effectiveDate = 'Effective date is required';
-
-    if (Object.keys(errors).length > 0) {
-      setEditErrors(errors);
-      return;
-    }
-
-    const color = BANK_COLORS[editForm.bank] || editForm.color || 'blue';
-    updateTemplate(String(editForm.id), { ...editForm, color });
-    setEditModalOpen(false);
-
-    openCommonModal({
-      heading: 'Contract Template Updated',
-      subtitle: '',
-      body: `Template "${editForm.name}" has been updated successfully.`,
-      color: 'green',
-      buttons: [{ label: 'OK', color: 'green' }],
-    });
+    createTemplateModal.open({ editId: template.id, isView: false });
   };
 
   const handleDelete = (template: TemplateItem) => {
@@ -809,7 +783,12 @@ export function ContractTemplateManagement() {
               rows.map((row) => {
                 const isActive = row.original.status === 'Active';
                 return (
-                  <Table.Tr key={row.id} className="lms-row">
+                  <Table.Tr
+                    key={row.id}
+                    className="lms-row"
+                    onDoubleClick={() => handleView(row.original)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {row.getVisibleCells().map((cell, idx) => (
                       <Table.Td
                         key={cell.id}
@@ -869,296 +848,6 @@ export function ContractTemplateManagement() {
         </Group>
       </Paper>
 
-      {/* ── View Modal ── */}
-      <Modal
-        opened={viewModalOpen}
-        onClose={() => setViewModalOpen(false)}
-        size={640}
-        radius="lg"
-        padding={0}
-        withCloseButton={false}
-      >
-        <Box bg="white">
-          <Group
-            justify="space-between"
-            align="center"
-            px="xl"
-            py="sm"
-            bg="brand.6"
-            style={{ borderBottom: '1px solid var(--mantine-color-brand-7)' }}
-          >
-            <Group gap="sm">
-              <ThemeIcon radius="md" size={34} variant="white" color="brand">
-                <IconFileDescription size={16} />
-              </ThemeIcon>
-              <Box>
-                <Text size="md" fw={700} c="white">
-                  View Contract Template
-                </Text>
-                <Text size="xs" fw={500} c="brand.1">
-                  Viewing details for this contract template
-                </Text>
-              </Box>
-            </Group>
-            <ActionIcon
-              variant="subtle"
-              color="white"
-              radius="xl"
-              size="md"
-              onClick={() => setViewModalOpen(false)}
-              aria-label="Close"
-            >
-              <IconX size={16} color="white" />
-            </ActionIcon>
-          </Group>
-
-          {selectedTemplate && (
-            <Box p="xl" bg="slate.0">
-              <Paper p="md" radius="md" bg="white" withBorder mb="md">
-                <SimpleGrid cols={2} spacing="md">
-                  <Box>
-                    <Text size="xs" c="slate.5" fw={600}>
-                      BANK / NBFC
-                    </Text>
-                    <Group gap="xs" mt={4}>
-                      <Avatar size={24} radius="sm" variant="light" color={selectedTemplate.color}>
-                        {selectedTemplate.bank.charAt(0)}
-                      </Avatar>
-                      <Text size="sm" fw={700} c="slate.8">
-                        {selectedTemplate.bank}
-                      </Text>
-                    </Group>
-                  </Box>
-                  <Box>
-                    <Text size="xs" c="slate.5" fw={600}>
-                      LOAN PRODUCT
-                    </Text>
-                    <Text size="sm" fw={600} c="slate.8" mt={4}>
-                      {selectedTemplate.product}
-                    </Text>
-                  </Box>
-                  <Box>
-                    <Text size="xs" c="slate.5" fw={600}>
-                      CONTRACT TYPE
-                    </Text>
-                    <Box mt={4}>
-                      <Badge variant="light" color={getBadgeColor(selectedTemplate.type)} size="sm">
-                        {selectedTemplate.type}
-                      </Badge>
-                    </Box>
-                  </Box>
-                  <Box>
-                    <Text size="xs" c="slate.5" fw={600}>
-                      STATUS
-                    </Text>
-                    <Box mt={4}>
-                      <StatusBadge status={selectedTemplate.status} />
-                    </Box>
-                  </Box>
-                  <Box>
-                    <Text size="xs" c="slate.5" fw={600}>
-                      EFFECTIVE DATE
-                    </Text>
-                    <Text size="sm" c="slate.8" mt={4}>
-                      {selectedTemplate.effectiveDate}
-                    </Text>
-                  </Box>
-                  <Box>
-                    <Text size="xs" c="slate.5" fw={600}>
-                      UPLOADED DATE
-                    </Text>
-                    <Text size="sm" c="slate.8" mt={4}>
-                      {selectedTemplate.uploadDate} {selectedTemplate.uploadTime ? `at ${selectedTemplate.uploadTime}` : ''}
-                    </Text>
-                  </Box>
-                  <Box style={{ gridColumn: '1 / -1' }}>
-                    <Text size="xs" c="slate.5" fw={600}>
-                      TEMPLATE NAME
-                    </Text>
-                    <Text size="sm" fw={600} c="slate.8" mt={4}>
-                      {selectedTemplate.name}
-                    </Text>
-                  </Box>
-                  <Box style={{ gridColumn: '1 / -1' }}>
-                    <Text size="xs" c="slate.5" fw={600}>
-                      MAPPED LOAN PRODUCTS
-                    </Text>
-                    <Box mt={4}>
-                      {selectedTemplate.mappedProductIds?.length ? (
-                        <Badge variant="light" color="brand" size="md">
-                          {selectedTemplate.mappedProductIds.length} Products Mapped
-                        </Badge>
-                      ) : (
-                        <Text size="xs" c="slate.5">No products mapped yet</Text>
-                      )}
-                    </Box>
-                  </Box>
-                  {selectedTemplate.description && (
-                    <Box style={{ gridColumn: '1 / -1' }}>
-                      <Text size="xs" c="slate.5" fw={600}>
-                        DESCRIPTION / COMMENT
-                      </Text>
-                      <Text size="xs" c="slate.7" mt={4}>
-                        {selectedTemplate.description}
-                      </Text>
-                    </Box>
-                  )}
-                </SimpleGrid>
-              </Paper>
-            </Box>
-          )}
-
-          <ModalFooter
-            variant="theme"
-            onClose={() => setViewModalOpen(false)}
-            onSaveDraft={() => {
-              if (selectedTemplate) {
-                setActiveTemplate(selectedTemplate);
-                setViewModalOpen(false);
-                navigate({ to: `/setup/map-products?templateId=${selectedTemplate.id}` });
-              }
-            }}
-            saveDraftLabel="Map Loan Products"
-            submitLabel="Edit Template"
-            onSubmit={() => {
-              if (selectedTemplate) {
-                setViewModalOpen(false);
-                handleEdit(selectedTemplate);
-              }
-            }}
-          />
-        </Box>
-      </Modal>
-
-      {/* ── Edit Modal ── */}
-      <Modal
-        opened={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        size={680}
-        radius="lg"
-        padding={0}
-        withCloseButton={false}
-      >
-        <Box bg="white">
-          <Group
-            justify="space-between"
-            align="center"
-            px="xl"
-            py="sm"
-            bg="brand.6"
-            style={{ borderBottom: '1px solid var(--mantine-color-brand-7)' }}
-          >
-            <Group gap="sm">
-              <ThemeIcon radius="md" size={34} variant="white" color="brand">
-                <IconPencil size={16} />
-              </ThemeIcon>
-              <Box>
-                <Text size="md" fw={700} c="white">
-                  Edit Contract Template
-                </Text>
-                <Text size="xs" fw={500} c="brand.1">
-                  Edit contract template configuration and details
-                </Text>
-              </Box>
-            </Group>
-            <ActionIcon
-              variant="subtle"
-              color="white"
-              radius="xl"
-              size="md"
-              onClick={() => setEditModalOpen(false)}
-              aria-label="Close"
-            >
-              <IconX size={16} color="white" />
-            </ActionIcon>
-          </Group>
-
-          {editForm && (
-            <Box p="xl" bg="slate.0">
-              <SimpleGrid cols={2} spacing="md">
-                <TextInput
-                  label="Template Name"
-                  placeholder="Enter template name"
-                  withAsterisk
-                  value={editForm.name}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.currentTarget.value })}
-                  error={editErrors.name}
-                  style={{ gridColumn: '1 / -1' }}
-                />
-                <Select
-                  label="Bank / NBFC"
-                  placeholder="Select bank"
-                  withAsterisk
-                  data={BANK_OPTIONS}
-                  value={editForm.bank}
-                  onChange={(val) => setEditForm({ ...editForm, bank: val || editForm.bank })}
-                  error={editErrors.bank}
-                  searchable
-                />
-                <Select
-                  label="Loan Product"
-                  placeholder="Select loan product"
-                  withAsterisk
-                  data={PRODUCT_OPTIONS}
-                  value={editForm.product}
-                  onChange={(val) => setEditForm({ ...editForm, product: val || editForm.product })}
-                  error={editErrors.product}
-                  searchable
-                />
-                <Select
-                  label="Contract Type"
-                  placeholder="Select type"
-                  withAsterisk
-                  data={CONTRACT_TYPE_OPTIONS}
-                  value={editForm.type}
-                  onChange={(val) => setEditForm({ ...editForm, type: val || editForm.type })}
-                  searchable
-                />
-                <TextInput
-                  label="Effective Date"
-                  placeholder="e.g. 01-May-2024"
-                  withAsterisk
-                  value={editForm.effectiveDate}
-                  onChange={(e) => setEditForm({ ...editForm, effectiveDate: e.currentTarget.value })}
-                  error={editErrors.effectiveDate}
-                />
-                <Select
-                  label="Status"
-                  data={['Active', 'Inactive']}
-                  value={editForm.status}
-                  onChange={(val) =>
-                    setEditForm({
-                      ...editForm,
-                      status: (val as 'Active' | 'Inactive') || 'Active',
-                    })
-                  }
-                />
-                <TextInput
-                  label="Version"
-                  placeholder="e.g. 1.0"
-                  value={editForm.version || '1.0'}
-                  onChange={(e) => setEditForm({ ...editForm, version: e.currentTarget.value })}
-                />
-                <Textarea
-                  label="Description / Comment"
-                  placeholder="Enter comment or notes"
-                  minRows={2}
-                  value={editForm.description || ''}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.currentTarget.value })}
-                  style={{ gridColumn: '1 / -1' }}
-                />
-              </SimpleGrid>
-            </Box>
-          )}
-
-          <ModalFooter
-            variant="theme"
-            onClose={() => setEditModalOpen(false)}
-            onSubmit={handleSaveEdit}
-            submitLabel="Update"
-          />
-        </Box>
-      </Modal>
     </Stack>
   );
 }

@@ -23,9 +23,11 @@ import { useMutation } from '@tanstack/react-query';
 import { uploadAndExtractTemplate } from '../../../../api/ContractTemplateApi';
 
 interface UploadTemplateProps {
+  uploadedData?: any;
   onNext: (uploadedData?: any) => void;
   onPrev: () => void;
   onCancel: () => void;
+  isView?: boolean;
 }
 
 const DEFAULT_EXTRACTED_PLACEHOLDERS = [
@@ -40,13 +42,17 @@ const DEFAULT_EXTRACTED_PLACEHOLDERS = [
 ];
 
 export const UploadTemplate: React.FC<UploadTemplateProps> = ({
+  uploadedData,
   onNext,
   onPrev,
   onCancel,
+  isView = false,
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [previewOpened, setPreviewOpened] = useState(false);
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [fileUrl, setFileUrl] = useState<string | null>(
+    uploadedData?.local_file_url || uploadedData?.file_url || null
+  );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -171,7 +177,7 @@ export const UploadTemplate: React.FC<UploadTemplateProps> = ({
           accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         />
 
-        {!file ? (
+        {!file && !uploadedData?.file_name && !uploadedData?.fileName && !uploadedData?.local_file_url && !isView ? (
           <Paper
             p={36}
             style={{
@@ -208,35 +214,43 @@ export const UploadTemplate: React.FC<UploadTemplateProps> = ({
                 </Box>
                 <Box>
                   <Text fw={600} size="sm" c="slate.8">
-                    {file.name}
+                    {file?.name || uploadedData?.file_name || uploadedData?.fileName || 'Standard_Personal_Loan_Agreement.pdf'}
                   </Text>
                   <Text c="slate.5" size="xs">
-                    {formatFileSize(file.size)} &bull; Uploaded on {getFormattedDate()}
+                    {file ? `${formatFileSize(file.size)} • ` : ''}Standard contract template document (PDF)
                   </Text>
                 </Box>
               </Group>
 
               <Group gap="xs">
-                {fileUrl && (
+                {(fileUrl || uploadedData?.local_file_url || uploadedData?.file_url) && (
                   <Button
                     variant="outline"
                     color="brand"
                     size="xs"
                     leftSection={<IconEye size={14} />}
-                    onClick={() => setPreviewOpened(true)}
+                    onClick={() => {
+                      const url = fileUrl || uploadedData?.local_file_url || uploadedData?.file_url;
+                      if (url) {
+                        setFileUrl(url);
+                        setPreviewOpened(true);
+                      }
+                    }}
                   >
                     Preview
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  color="brand"
-                  size="xs"
-                  leftSection={<IconRefresh size={14} />}
-                  onClick={handleBrowseClick}
-                >
-                  Replace File
-                </Button>
+                {!isView && (
+                  <Button
+                    variant="outline"
+                    color="brand"
+                    size="xs"
+                    leftSection={<IconRefresh size={14} />}
+                    onClick={handleBrowseClick}
+                  >
+                    Replace File
+                  </Button>
+                )}
                 <IconCircleCheck size={24} color="var(--mantine-color-green-6)" />
               </Group>
             </Group>
@@ -272,15 +286,19 @@ export const UploadTemplate: React.FC<UploadTemplateProps> = ({
           </Button>
           <Group gap="sm">
             <Button variant="default" size="sm" radius="md" onClick={onCancel}>
-              Cancel
+              {isView ? 'Close' : 'Cancel'}
             </Button>
             <Button
               color="brand"
               size="sm"
               radius="md"
-              onClick={handleNextClick}
-              disabled={isUploading}
-              loading={isUploading}
+              onClick={
+                isView
+                  ? () => onNext(uploadedData)
+                  : handleNextClick
+              }
+              disabled={!isView && isUploading}
+              loading={!isView && isUploading}
             >
               Next: Configure Template
             </Button>

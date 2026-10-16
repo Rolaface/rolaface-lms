@@ -29,12 +29,15 @@ export interface CreateTemplateModalProps {
   onClose: () => void;
   onMinimize?: () => void;
   editId?: string | null;
+  isView?: boolean;
 }
 
 export function CreateTemplateModal({
   opened,
   onClose,
   onMinimize,
+  editId,
+  isView = false,
 }: CreateTemplateModalProps) {
   const theme = useMantineTheme();
   const [activeStep, setActiveStep] = useState(0);
@@ -42,7 +45,36 @@ export function CreateTemplateModal({
   const [uploadedData, setUploadedData] = useState<any>(null);
   const navigate = useNavigate();
 
-  const { addTemplate, setActiveTemplate } = useContractTemplateStore();
+  const { templates, addTemplate, updateTemplate, setActiveTemplate } = useContractTemplateStore();
+  const existingTemplate = editId ? templates.find((t) => t.id === editId) : null;
+
+  React.useEffect(() => {
+    if (existingTemplate) {
+      setTemplateInfo({
+        name: existingTemplate.name || existingTemplate.templateName || '',
+        type: existingTemplate.type || existingTemplate.templateType || 'Loan Agreement',
+        effectiveDate: existingTemplate.effectiveDate || existingTemplate.effectiveFrom || '',
+        effectiveTo: existingTemplate.effectiveTo || '',
+        comment: existingTemplate.description || '',
+        description: existingTemplate.description || '',
+        bank: existingTemplate.bank || 'HDFC Bank',
+        product: existingTemplate.product || 'Personal Loan',
+        version: existingTemplate.version || '1.0',
+      });
+      setUploadedData({
+        local_file_url: existingTemplate.fileUrl || null,
+        file_name: existingTemplate.fileUrl
+          ? existingTemplate.fileUrl.split('/').pop()
+          : `${(existingTemplate.name || 'Contract_Template').replace(/\s+/g, '_')}.pdf`,
+        placeholders: existingTemplate.placeholders || [],
+      });
+      setActiveStep(0);
+    } else if (!opened) {
+      setTemplateInfo(null);
+      setUploadedData(null);
+      setActiveStep(0);
+    }
+  }, [editId, existingTemplate, opened]);
 
   const handleStep1Next = (data: TemplateInfoData) => {
     setTemplateInfo(data);
@@ -70,10 +102,48 @@ export function CreateTemplateModal({
     hours = hours ? hours : 12;
     const uploadTimeStr = `${hours}:${minutes} ${ampm}`;
 
-    const bankName = templateInfo?.bank || 'HDFC Bank';
-    const templateName = templateInfo?.name || 'Standard Personal Loan Agreement';
-    const templateVersion = templateInfo?.version || '1.0';
-    const templateType = templateInfo?.type || 'Loan Agreement';
+    const bankName = templateInfo?.bank || existingTemplate?.bank || 'HDFC Bank';
+    const templateName = templateInfo?.name || existingTemplate?.name || 'Standard Personal Loan Agreement';
+    const templateVersion = templateInfo?.version || existingTemplate?.version || '1.0';
+    const templateType = templateInfo?.type || existingTemplate?.type || 'Loan Agreement';
+
+    if (editId) {
+      const updatedTemplate: TemplateItem = {
+        ...existingTemplate!,
+        id: editId,
+        name: templateName,
+        templateName: templateName,
+        type: templateType,
+        templateType: templateType,
+        version: templateVersion,
+        templateVersion: templateVersion,
+        bank: bankName,
+        color: BANK_COLORS[bankName] || existingTemplate?.color || 'indigo',
+        product: templateInfo?.product || existingTemplate?.product || 'Personal Loan',
+        effectiveDate: templateInfo?.effectiveDate || existingTemplate?.effectiveDate || uploadDateStr,
+        effectiveFrom: templateInfo?.effectiveDate || existingTemplate?.effectiveFrom || now.toISOString().slice(0, 10),
+        effectiveTo: templateInfo?.effectiveTo !== undefined ? templateInfo.effectiveTo : existingTemplate?.effectiveTo,
+        description:
+          templateInfo?.description !== undefined
+            ? templateInfo.description
+            : templateInfo?.comment || existingTemplate?.description || '',
+        fileUrl: uploadedData?.local_file_url || uploadedData?.message?.file_url || existingTemplate?.fileUrl || '',
+        placeholders: configData?.mappings ? Object.values(configData.mappings) : (existingTemplate?.placeholders || []),
+      };
+
+      updateTemplate(editId, updatedTemplate);
+      setActiveTemplate(updatedTemplate);
+      onClose();
+
+      openCommonModal({
+        heading: 'Contract Template Updated Successfully',
+        subtitle: `Template "${templateName}" has been updated.`,
+        body: `Contract template "${templateName}" has been updated successfully.`,
+        color: 'green',
+        buttons: [{ label: 'OK', color: 'green' }],
+      });
+      return;
+    }
 
     const newTemplate: TemplateItem = {
       id: `tmpl-${Date.now()}`,
@@ -188,10 +258,16 @@ export function CreateTemplateModal({
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white">
-                Create Contract Template
+                {isView
+                  ? 'View Contract Template'
+                  : editId
+                  ? 'Edit Contract Template'
+                  : 'Create Contract Template'}
               </Text>
               <Text size="xs" fw={500} c="brand.1">
-                Configure template details, upload document, and map placeholders
+                {isView
+                  ? 'View contract template details, uploaded document, and configuration'
+                  : 'Configure template details, upload document, and map placeholders'}
               </Text>
             </Box>
           </Group>
@@ -254,13 +330,16 @@ export function CreateTemplateModal({
               initialValues={templateInfo || undefined}
               onNext={handleStep1Next}
               onCancel={onClose}
+              isView={isView}
             />
           )}
           {activeStep === 1 && (
             <UploadTemplate
+              uploadedData={uploadedData}
               onNext={handleStep2Next}
               onPrev={handlePrev}
               onCancel={onClose}
+              isView={isView}
             />
           )}
           {activeStep === 2 && (
@@ -269,6 +348,8 @@ export function CreateTemplateModal({
               onNext={handleStep3Complete}
               onPrev={handlePrev}
               onCancel={onClose}
+              isView={isView}
+              submitLabel={editId ? 'Update Template' : 'Create Template'}
             />
           )}
         </Box>

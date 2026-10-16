@@ -31,6 +31,7 @@ interface TemplateInfoProps {
   initialValues?: Partial<TemplateInfoData>;
   onNext: (data: TemplateInfoData) => void;
   onCancel: () => void;
+  isView?: boolean;
 }
 
 const TEMPLATE_TYPES = [
@@ -47,6 +48,7 @@ export const TemplateInfo: React.FC<TemplateInfoProps> = ({
   initialValues,
   onNext,
   onCancel,
+  isView = false,
 }) => {
   const [name, setName] = useState(initialValues?.name || '');
   const [type, setType] = useState(initialValues?.type || '');
@@ -55,6 +57,18 @@ export const TemplateInfo: React.FC<TemplateInfoProps> = ({
   const [comment, setComment] = useState(
     initialValues?.comment || initialValues?.description || ''
   );
+
+  React.useEffect(() => {
+    if (initialValues) {
+      if (initialValues.name !== undefined) setName(initialValues.name);
+      if (initialValues.type !== undefined) setType(initialValues.type);
+      if (initialValues.effectiveDate !== undefined) setEffectiveDate(initialValues.effectiveDate);
+      if (initialValues.effectiveTo !== undefined) setEffectiveTo(initialValues.effectiveTo || '');
+      if (initialValues.comment !== undefined || initialValues.description !== undefined) {
+        setComment(initialValues.comment || initialValues.description || '');
+      }
+    }
+  }, [initialValues]);
 
   const [errors, setErrors] = useState<{
     name?: string;
@@ -132,7 +146,8 @@ export const TemplateInfo: React.FC<TemplateInfoProps> = ({
                 error={errors.type}
                 size="sm"
                 radius="md"
-                required
+                required={!isView}
+                disabled={isView}
               />
             </Grid.Col>
 
@@ -148,7 +163,8 @@ export const TemplateInfo: React.FC<TemplateInfoProps> = ({
                 error={errors.name}
                 size="sm"
                 radius="md"
-                required
+                required={!isView}
+                disabled={isView}
               />
             </Grid.Col>
 
@@ -166,7 +182,8 @@ export const TemplateInfo: React.FC<TemplateInfoProps> = ({
                 error={errors.effectiveDate}
                 size="sm"
                 radius="md"
-                required
+                required={!isView}
+                disabled={isView}
               />
             </Grid.Col>
 
@@ -178,6 +195,7 @@ export const TemplateInfo: React.FC<TemplateInfoProps> = ({
                 onChange={(e) => setEffectiveTo(e.currentTarget.value)}
                 size="sm"
                 radius="md"
+                disabled={isView}
               />
             </Grid.Col>
 
@@ -192,6 +210,7 @@ export const TemplateInfo: React.FC<TemplateInfoProps> = ({
                 maxRows={5}
                 size="sm"
                 radius="md"
+                disabled={isView}
               />
             </Grid.Col>
           </Grid>
@@ -203,24 +222,41 @@ export const TemplateInfo: React.FC<TemplateInfoProps> = ({
         <Divider color="slate.2" />
         <Group justify="space-between" px="xl" py="md" bg="white">
           <Button variant="default" size="sm" radius="md" onClick={onCancel}>
-            Cancel
+            {isView ? 'Close' : 'Cancel'}
           </Button>
 
           <Group gap="sm">
-            <Button
-              variant="default"
-              size="sm"
-              radius="md"
-              onClick={handleProceed}
-            >
-              Save as Draft
-            </Button>
+            {!isView && (
+              <Button
+                variant="default"
+                size="sm"
+                radius="md"
+                onClick={handleProceed}
+              >
+                Save as Draft
+              </Button>
+            )}
             <Button
               color="brand"
               size="sm"
               radius="md"
               rightSection={<IconArrowRight size={14} />}
-              onClick={handleProceed}
+              onClick={
+                isView
+                  ? () =>
+                      onNext({
+                        name: name.trim(),
+                        type,
+                        effectiveDate,
+                        effectiveTo,
+                        comment: comment.trim(),
+                        description: comment.trim(),
+                        bank: initialValues?.bank || 'HDFC Bank',
+                        product: initialValues?.product || 'Personal Loan',
+                        version: initialValues?.version || '1.0',
+                      })
+                  : handleProceed
+              }
             >
               Next: Upload Template
             </Button>
