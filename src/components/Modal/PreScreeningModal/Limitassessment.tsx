@@ -188,7 +188,7 @@ export function LimitAssessment({
         <Box>
           <Group gap={9} align="center">
             <Text fz={16} fw={800} c="slate.9" style={{ letterSpacing: "-0.01em" }}>
-              Loan eligibility &amp; limit assessment
+              Eligibility assessment
             </Text>
             {productCode && (
               <Badge size="sm" radius="xl" color="slate" variant="light">

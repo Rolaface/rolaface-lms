@@ -35,6 +35,7 @@ import {
   IconCoins,
   IconBuildingBank,
   IconGauge as IconGaugeTab,
+  IconListCheck,
 } from "@tabler/icons-react";
 import { useDebouncedValue } from "@mantine/hooks";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -72,6 +73,7 @@ import {
   NUMERIC,
 } from './PreScreeningShared';
 import { LimitAssessment } from './Limitassessment';
+import { PrescreeningAssessment } from './PrescreeningAssessment';
 
 function AmountUtilizationGauge({
   requested,
@@ -998,15 +1000,16 @@ function reducer(state: PrescreeningState, action: any): PrescreeningState {
 }
 
 // ---------------------------------------------------------------------------
-// Top-level tabs: Details | Limit Assessment
+// Top-level tabs: Details | Pre-screening Assessment | Eligibility Assessment
 // ---------------------------------------------------------------------------
 
-type TopTab = "details" | "limitAssessment";
+type TopTab = "details" | "prescreeningAssessment" | "limitAssessment";
 
 function TopTabs({ tab, setTab }: { tab: TopTab; setTab: (t: TopTab) => void }) {
   const tabs: { key: TopTab; label: string; icon: React.FC<any> }[] = [
     { key: "details", label: "Details", icon: IconClipboardList },
-    { key: "limitAssessment", label: "Limit Assessment", icon: IconGaugeTab },
+    { key: "prescreeningAssessment", label: "Pre-screening Assessment", icon: IconListCheck },
+    { key: "limitAssessment", label: "Eligibility Assessment", icon: IconGaugeTab },
   ];
   return (
     <Group
@@ -1522,6 +1525,8 @@ export function PrescreeningWorkspace({
             {/* Decision — full width */}
             <Box mt={10}>{decisionNode}</Box>
           </Box>
+        ) : topTab === "prescreeningAssessment" ? (
+          <PrescreeningAssessment evaluation={evaluation} onRecalculate={readOnly ? undefined : () => reevaluate()} />
         ) : (
           <LimitAssessment
             requested={requested}

@@ -127,7 +127,7 @@ const FALLBACK_STYLE = { color: "#475569", wash: "#F1F5F9" };
 
 const humanize = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-const OPERATOR_LABELS: Record<string, string> = {
+export const OPERATOR_LABELS: Record<string, string> = {
   equals: "is",
   not_equals: "is not",
   greater_than: "is greater than",

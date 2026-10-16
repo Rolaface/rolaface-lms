@@ -219,6 +219,29 @@ export interface EligibilityLimit {
   [detail: string]: any;
 }
 
+export interface PrescreeningRuleResult {
+  id: string;
+  field: string;
+  label: string;
+  operator: string;
+  value: unknown;
+  value2: unknown;
+  values: unknown[] | null;
+  severity: string;
+  action: string | null;
+  actual: unknown;
+  missing: boolean;
+  passed: boolean;
+}
+
+export interface PrescreeningGroupResult {
+  id: string;
+  name: string;
+  logic: "ALL" | "ANY";
+  passed: boolean | null;
+  rules: PrescreeningRuleResult[];
+}
+
 export interface Evaluation {
   verdict: string;
   loan_product: string | null;
@@ -232,6 +255,7 @@ export interface Evaluation {
     verdict: string;
     reason: string | null;
     failed: { label: string; severity: string; actual: unknown; missing: boolean; group: string }[];
+    groups?: PrescreeningGroupResult[];
   };
   eligibility?: {
     skipped?: boolean;
