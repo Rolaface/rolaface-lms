@@ -116,6 +116,7 @@ export function PreScreeningModal({
           {!readOnly && (
             <StageFooter
               ready={canSubmit}
+              warning={!!result?.warning}
               message={
                 (result?.message ??
                   (canSubmit ? "All prescreening checks passed — ready for appraisal." : "Resolve the outstanding checks to continue.")) +

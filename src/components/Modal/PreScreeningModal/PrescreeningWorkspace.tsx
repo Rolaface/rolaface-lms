@@ -12,6 +12,7 @@ import {
   Table,
   TextInput,
   Button,
+  Loader,
   ActionIcon,
 } from "@mantine/core";
 import {
@@ -1005,7 +1006,19 @@ function reducer(state: PrescreeningState, action: any): PrescreeningState {
 
 type TopTab = "details" | "prescreeningAssessment" | "limitAssessment";
 
-function TopTabs({ tab, setTab }: { tab: TopTab; setTab: (t: TopTab) => void }) {
+function TopTabs({
+  tab,
+  setTab,
+  evaluating,
+  lastRun,
+  onRerun,
+}: {
+  tab: TopTab;
+  setTab: (t: TopTab) => void;
+  evaluating: boolean;
+  lastRun: { at: Date; status: string } | null;
+  onRerun?: () => void;
+}) {
   const tabs: { key: TopTab; label: string; icon: React.FC<any> }[] = [
     { key: "details", label: "Details", icon: IconClipboardList },
     { key: "prescreeningAssessment", label: "Pre-screening Assessment", icon: IconListCheck },
@@ -1062,12 +1075,52 @@ function TopTabs({ tab, setTab }: { tab: TopTab; setTab: (t: TopTab) => void }) 
           </UnstyledButton>
         );
       })}
+      <Group gap={10} ml="auto" pb={4} wrap="nowrap">
+        {evaluating ? (
+          <Group gap={6} wrap="nowrap">
+            <Loader size={12} color="brand" />
+            <Text fz={11.5} fw={600} c="brand.6">
+              Running pre-screening and eligibility…
+            </Text>
+          </Group>
+        ) : lastRun ? (
+          <Group gap={5} wrap="nowrap" className="ps-fade-up" key={lastRun.at.getTime()}>
+            <IconCircleCheck size={13} color="var(--mantine-color-success-6)" />
+            <Text fz={11.5} c="slate.6">
+              Re-run at {lastRun.at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} ·{" "}
+              <Text span inherit fw={700}>{lastRun.status}</Text>
+            </Text>
+          </Group>
+        ) : (
+          <Group gap={5} wrap="nowrap">
+            <IconCircleCheck size={13} color="var(--mantine-color-success-6)" />
+            <Text fz={11.5} c="slate.5">
+              Results up to date
+            </Text>
+          </Group>
+        )}
+        {onRerun && (
+          <Button
+            size="compact-xs"
+            radius="md"
+            variant="light"
+            color="brand"
+            leftSection={<IconRefresh size={12} />}
+            onClick={onRerun}
+            loading={evaluating}
+            title="Runs the active rules again with the figures on screen. Save or Approve stores the result."
+          >
+            Rerun pre-screening
+          </Button>
+        )}
+      </Group>
     </Group>
   );
 }
 
 export interface PrescreeningResult {
   ready: boolean;
+  warning: boolean;
   message: string | null;
   overrides: EvaluationOverrides;
   payload: StagePayload;
@@ -1137,10 +1190,23 @@ function engineLines(
   return [...base, ...extra.filter((line) => line.monthly_amount > 0)];
 }
 
+const STAGE_STATUS_LABEL: Record<string, string> = {
+  Eligible: "Pass",
+  "Eligible with Warnings": "Warning",
+  "Manual Review": "Review",
+  "Not Eligible": "Fail",
+};
+
+const SEVERITY_FOR_VERDICT: Record<string, string> = { "Not Eligible": "Blocking", "Manual Review": "Review", "Eligible with Warnings": "Warning" };
+
 function evaluationReason(evaluation: Evaluation | undefined) {
-  const failed = evaluation?.prescreening?.failed?.[0];
+  const prescreening = evaluation?.prescreening;
+  const failed =
+    prescreening?.verdict === evaluation?.verdict
+      ? prescreening?.failed?.find((f) => f.severity === SEVERITY_FOR_VERDICT[evaluation?.verdict ?? ""])
+      : undefined;
   if (failed) return `${failed.label}${failed.missing ? " missing" : ` ${failed.actual}`} (${failed.severity})`;
-  const text = evaluation?.eligibility?.reasons?.[0] ?? evaluation?.prescreening?.reason ?? evaluation?.error;
+  const text = prescreening?.reason ?? evaluation?.eligibility?.reasons?.[0] ?? evaluation?.error;
   return text ? text.replace(/\.$/, "") : null;
 }
 
@@ -1339,28 +1405,44 @@ export function PrescreeningWorkspace({
     ? "Pending"
     : verdict === "Not Eligible"
       ? "Fail"
-      : ELIGIBLE_VERDICTS.includes(verdict ?? "") && calc.eligibleAmount >= requested
-        ? verdict === "Eligible with Warnings" ? "Warning" : "Pass"
-        : "Review";
+      : verdict === "Manual Review"
+        ? "Review"
+        : verdict === "Eligible with Warnings"
+          ? "Warning"
+          : "Pass";
   const settled = !evaluating && debouncedOverrides === overrides;
-  const isEligible =
-    !!calc && settled && verdict !== "Not Eligible" && (verdict === "Manual Review" || calc.eligibleAmount >= requested);
+  const [rerunning, setRerunning] = useState(false);
+  const [lastRun, setLastRun] = useState<{ at: Date; status: string } | null>(null);
+  const rerun = async () => {
+    setRerunning(true);
+    const [{ data }] = await Promise.all([reevaluate(), new Promise((resolve) => setTimeout(resolve, 700))]);
+    setRerunning(false);
+    setLastRun({ at: new Date(), status: STAGE_STATUS_LABEL[data?.verdict ?? ""] ?? "No result" });
+  };
+  const isEligible = !!calc && settled && verdict !== "Not Eligible";
+  const overEligible = !!calc && verdict !== "Not Eligible" && requested > calc.eligibleAmount;
   const reason = evaluationReason(evaluation);
+  const amountNote = overEligible
+    ? ` Requested ${zmw(requested)} is above the eligible ${zmw(calc!.eligibleAmount)}; appraisal will start from the eligible amount.`
+    : "";
   const message = !evaluation
     ? null
     : verdict === "Not Eligible"
       ? `Not eligible — ${reason ?? "see the checks above"}.`
       : verdict === "Manual Review"
-        ? `Manual review — ${reason ?? "the officer decides"}.`
+        ? `Manual review — ${reason ?? "the officer decides"}.${amountNote}`
         : verdict === "Eligible with Warnings"
-          ? `Warning — ${reason ?? "see the checks above"}.`
-          : null;
+          ? `Warning — ${reason ?? "see the checks above"}.${amountNote}`
+          : overEligible
+            ? amountNote.trim()
+            : null;
 
   useEffect(() => {
     if (!onChange) return;
     const strip = <T extends { status: string }>(value: T) => ({ ...value, status: "idle" as const });
     onChange({
       ready: isEligible,
+      warning: overEligible || verdict === "Eligible with Warnings" || verdict === "Manual Review",
       message,
       overrides,
       payload: {
@@ -1444,7 +1526,13 @@ export function PrescreeningWorkspace({
 
   return (
     <Box style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-      <TopTabs tab={topTab} setTab={setTopTab} />
+      <TopTabs
+        tab={topTab}
+        setTab={setTopTab}
+        evaluating={!readOnly && (!settled || rerunning)}
+        lastRun={lastRun}
+        onRerun={readOnly ? undefined : rerun}
+      />
 
       <Box
         style={{
@@ -1526,14 +1614,17 @@ export function PrescreeningWorkspace({
             <Box mt={10}>{decisionNode}</Box>
           </Box>
         ) : topTab === "prescreeningAssessment" ? (
-          <PrescreeningAssessment evaluation={evaluation} onRecalculate={readOnly ? undefined : () => reevaluate()} />
+          <PrescreeningAssessment evaluation={evaluation} />
         ) : (
           <LimitAssessment
             requested={requested}
             limits={eligibility?.limits}
             productCode={evaluation?.loan_product ?? null}
             ruleLabel={eligibility?.rule ? `${eligibility.rule} v${eligibility.version}` : null}
-            onRecalculate={readOnly ? undefined : () => reevaluate()}
+            decision={eligibility?.skipped ? null : eligibility?.decision ?? null}
+            reasons={eligibility?.reasons ?? []}
+            eligibleAmount={evaluation?.eligible_amount ?? null}
+            limitingFactor={eligibility?.limiting_factor ?? null}
           />
         )}
       </Box>

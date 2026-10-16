@@ -94,12 +94,14 @@ function WorkflowMenu({
   onViewDetails,
   onCreateLoan,
   onApprove,
+  onRerun,
 }: {
   row: LoanApplicationRow;
   onSelect: (action: string, actions: WorkflowAction[]) => void;
   onViewDetails: () => void;
   onCreateLoan: () => void;
   onApprove: () => void;
+  onRerun: () => void;
 }) {
   const [opened, setOpened] = useState(false);
   const { data, isFetching } = useQuery({
@@ -128,6 +130,19 @@ function WorkflowMenu({
           View details
         </Menu.Item>
         <Menu.Divider />
+        {row.workflow_state === "Pre-Screening" && (
+          <Menu.Item
+            onClick={() => {
+              setOpened(false);
+              onRerun();
+            }}
+          >
+            Rerun pre-screening
+            <Text fz={10.5} c="slate.5" lh={1.3} mt={2}>
+              Run the active rules again and save the result
+            </Text>
+          </Menu.Item>
+        )}
         {canApprove && (
           <Menu.Item
             onClick={() => {
@@ -367,6 +382,54 @@ export function LoanApplication({ stage = "application" }: { stage?: Origination
     },
   });
 
+  const rerunMutation = useMutation({
+    mutationFn: (id: string) => LoanApplicationApi.evaluate(id, undefined, true, false),
+    onSuccess: (result, id) => {
+      queryClient.invalidateQueries({ queryKey: ["los-loan-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["los-loan-application", id] });
+      queryClient.invalidateQueries({ queryKey: ["los-workflow-actions", id] });
+      openCommonModal({
+        heading: "Pre-screening Re-run",
+        subtitle: "",
+        body: `${id}: ${result.status ?? result.verdict}${
+          result.eligible_amount ? `, eligible amount ${formatAmount(companyCurrency, result.eligible_amount, { withSymbol: true })}` : ""
+        }.`,
+        color: "green",
+        buttons: [{ label: "Close", color: "green" }],
+      });
+    },
+    onError: (error: any) => {
+      openCommonModal({
+        heading: "Action Failed",
+        subtitle: "We couldn't complete your request.",
+        body: parseFrappeError(error),
+        color: "red",
+        buttons: [{ label: "Close", color: "red" }],
+      });
+    },
+  });
+
+  const confirmRerun = (row: LoanApplicationRow) => {
+    openCommonModal({
+      heading: "Rerun Pre-screening",
+      subtitle: "",
+      body: (
+        <>
+          Run the active pre-screening and eligibility rules again for{" "}
+          <Text span fw={600}>
+            {row.name}
+          </Text>
+          ? The new result replaces the current status ({row.custom_status}).
+        </>
+      ),
+      color: "blue",
+      buttons: [
+        { label: "Cancel", variant: "default" },
+        { label: "Rerun", color: "blue", onClick: () => rerunMutation.mutate(row.name) },
+      ],
+    });
+  };
+
   const confirmApprove = (row: LoanApplicationRow) => {
     openCommonModal({
       heading: "Approve Pre-screening",
@@ -500,7 +563,17 @@ export function LoanApplication({ stage = "application" }: { stage?: Origination
       columnHelper.accessor("status", {
         header: "Status",
         enableSorting: false,
-        cell: (info) => <StatusBadge status={info.row.original.custom_status || displayStatus(info.row.original)} />,
+        cell: (info) =>
+          rerunMutation.isPending && rerunMutation.variables === info.row.original.name ? (
+            <Group gap={6} wrap="nowrap">
+              <Loader size={12} color="brand" />
+              <Text fz={11} fw={600} c="brand.6">
+                Re-running…
+              </Text>
+            </Group>
+          ) : (
+            <StatusBadge status={info.row.original.custom_status || displayStatus(info.row.original)} />
+          ),
       }),
       columnHelper.display({
         id: "actions",
@@ -547,6 +620,7 @@ export function LoanApplication({ stage = "application" }: { stage?: Origination
                 onViewDetails={() => handleViewDetails(row.name)}
                 onCreateLoan={() => confirmCreateLoan(row)}
                 onApprove={() => confirmApprove(row)}
+                onRerun={() => confirmRerun(row)}
                 onSelect={(action, actions) =>
                   openAction({ id: row.name, applicantName: row.applicant_name, actions, preselectedAction: action })
                 }
@@ -556,7 +630,7 @@ export function LoanApplication({ stage = "application" }: { stage?: Origination
         },
       }),
     ],
-    [companyCurrency, deleteMutation.isPending, openAction, stageConfig],
+    [companyCurrency, deleteMutation.isPending, openAction, stageConfig, rerunMutation.isPending, rerunMutation.variables],
   );
 
   const table = useReactTable({

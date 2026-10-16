@@ -244,6 +244,7 @@ export interface PrescreeningGroupResult {
 
 export interface Evaluation {
   verdict: string;
+  status?: string;
   loan_product: string | null;
   product_name: string | null;
   requested_amount: number;

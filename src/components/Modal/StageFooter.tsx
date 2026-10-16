@@ -1,10 +1,11 @@
 import { Button, Group, Text } from "@mantine/core";
-import { IconArrowRight, IconCircleCheck, IconInfoCircle } from "@tabler/icons-react";
+import { IconAlertTriangle, IconArrowRight, IconCircleCheck, IconInfoCircle } from "@tabler/icons-react";
 
 export type StageBusy = "save" | "approve" | null;
 
 export function StageFooter({
   ready,
+  warning = false,
   message,
   busy,
   canSave = true,
@@ -13,6 +14,7 @@ export function StageFooter({
   onApprove,
 }: {
   ready: boolean;
+  warning?: boolean;
   message: string;
   busy: StageBusy;
   canSave?: boolean;
@@ -35,12 +37,14 @@ export function StageFooter({
       }}
     >
       <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
-        {ready ? (
+        {ready && warning ? (
+          <IconAlertTriangle size={15} color="var(--mantine-color-orange-6)" style={{ flexShrink: 0 }} />
+        ) : ready ? (
           <IconCircleCheck size={15} color="var(--mantine-color-success-6)" style={{ flexShrink: 0 }} />
         ) : (
           <IconInfoCircle size={15} color="var(--mantine-color-slate-4)" style={{ flexShrink: 0 }} />
         )}
-        <Text fz={12} c={ready ? "success.7" : "slate.5"} fw={ready ? 600 : 500}>
+        <Text fz={12} c={ready && warning ? "orange.8" : ready ? "success.7" : "slate.5"} fw={ready ? 600 : 500}>
           {message}
         </Text>
       </Group>

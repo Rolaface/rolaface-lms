@@ -4,15 +4,14 @@ import {
   Text,
   Badge,
   Paper,
-  Button,
   Stack,
 } from "@mantine/core";
-import {
-  IconRefresh,
-} from "@tabler/icons-react";
 
 import type { EligibilityLimit } from "../../../api/LosConfiguration/LoanApplicationApi";
 import { zmw, NUMERIC } from "./PreScreeningShared";
+
+const DECISION_COLOR: Record<string, string> = { Eligible: "green", "Manual Review": "orange", "Not Eligible": "red" };
+const DECISION_STATUS: Record<string, string> = { Eligible: "Pass", "Manual Review": "Review", "Not Eligible": "Fail" };
 
 // ---------------------------------------------------------------------------
 // Small building blocks
@@ -110,13 +109,19 @@ export function LimitAssessment({
   limits: engineLimits,
   productCode,
   ruleLabel,
-  onRecalculate,
+  decision,
+  reasons,
+  eligibleAmount,
+  limitingFactor,
 }: {
   requested: number;
   limits?: EligibilityLimit[];
   productCode: string | null;
   ruleLabel: string | null;
-  onRecalculate?: () => void;
+  decision: string | null;
+  reasons: string[];
+  eligibleAmount: number | null;
+  limitingFactor: string | null;
 }) {
   const find = (key: EligibilityLimit["key"]) => engineLimits?.find((limit) => limit.key === key);
   const income = find("income");
@@ -164,6 +169,12 @@ export function LimitAssessment({
     },
   ];
 
+  const summary = !decision
+    ? "Pre-screening failed, so eligibility was not calculated."
+    : reasons.length
+      ? reasons.join(" ")
+      : "Every eligibility check passed.";
+
   const maxLimitValue = Math.max(
     ...limits.map((l) => l.value ?? 0),
     requested,
@@ -172,8 +183,8 @@ export function LimitAssessment({
 
   return (
     <Box
-      px={18}
-      py={16}
+      px={14}
+      py={10}
       style={{
         height: "100%",
         display: "flex",
@@ -183,42 +194,44 @@ export function LimitAssessment({
           "linear-gradient(180deg, var(--mantine-color-brand-0) 0%, var(--mantine-color-slate-0) 280px)",
       }}
     >
-      {/* Header */}
-      <Group justify="space-between" align="center" mb={14} wrap="wrap" gap={10}>
-        <Box>
-          <Group gap={9} align="center">
-            <Text fz={16} fw={800} c="slate.9" style={{ letterSpacing: "-0.01em" }}>
-              Eligibility assessment
+      <Paper
+        withBorder
+        radius="md"
+        px={12}
+        py={7}
+        mb={8}
+        bg="white"
+        style={{ borderLeft: `4px solid var(--mantine-color-${DECISION_COLOR[decision ?? ""] ?? "slate"}-5)` }}
+      >
+        <Group justify="space-between" wrap="nowrap" gap={12} align="center">
+          <Group gap={8} wrap="nowrap" align="center" style={{ minWidth: 0 }}>
+            <Text fz={13.5} fw={800} c="slate.9" style={{ flexShrink: 0 }}>
+              Eligibility
             </Text>
             {productCode && (
-              <Badge size="sm" radius="xl" color="slate" variant="light">
+              <Badge size="xs" radius="xl" color="slate" variant="light" style={{ flexShrink: 0 }}>
                 {productCode}
               </Badge>
             )}
+            <Badge size="sm" radius="xl" variant="light" color={DECISION_COLOR[decision ?? ""] ?? "slate"} style={{ flexShrink: 0 }}>
+              {decision ? DECISION_STATUS[decision] ?? decision : "Skipped"}
+            </Badge>
+            <Text fz={12.5} c="slate.7" truncate title={summary}>
+              {summary}
+            </Text>
           </Group>
-          <Text fz={11.5} c="slate.5" mt={2}>
-            Every policy ceiling applied to this application — the lowest one binds.
-          </Text>
-        </Box>
-        <Group gap={8}>
-          <Button
-            size="compact-sm"
-            radius="md"
-            leftSection={<IconRefresh size={14} />}
-            onClick={onRecalculate}
-            styles={{
-              root: {
-                background:
-                  "linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-7))",
-                boxShadow:
-                  "0 8px 18px -10px color-mix(in srgb, var(--mantine-color-brand-6) 90%, transparent)",
-              },
-            }}
-          >
-            Recalculate with overrides
-          </Button>
+          {decision && eligibleAmount != null && (
+            <Box ta="right" style={{ flexShrink: 0 }}>
+              <Text fz={12} c="slate.5" style={NUMERIC}>
+                Eligible{limitingFactor ? ` (${limitingFactor} limit)` : ""}{" "}
+                <Text span fz={13} fw={800} c="slate.9">
+                  {zmw(eligibleAmount)}
+                </Text>
+              </Text>
+            </Box>
+          )}
         </Group>
-      </Group>
+      </Paper>
 
       {/* Constraints */}
       <Paper
@@ -293,6 +306,9 @@ export function LimitAssessment({
             <Box style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--mantine-color-white)", border: "2px solid var(--mantine-color-danger-5)" }} />
             <Text fz={10.5} c="slate.5" style={NUMERIC}>Requested ({zmw(requested)})</Text>
           </Group>
+          <Text fz={10.5} c="slate.5" ml="auto">
+            The lowest limit binds.
+          </Text>
         </Group>
       </Paper>
     </Box>

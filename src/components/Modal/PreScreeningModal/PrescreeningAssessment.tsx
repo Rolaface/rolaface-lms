@@ -1,5 +1,5 @@
-import { Box, Group, Text, Badge, Paper, Button, SimpleGrid, ThemeIcon } from "@mantine/core";
-import { IconRefresh, IconCheck, IconX, IconMinus } from "@tabler/icons-react";
+import { Box, Group, Text, Badge, Paper, SimpleGrid, ThemeIcon } from "@mantine/core";
+import { IconCheck, IconX, IconMinus } from "@tabler/icons-react";
 
 import type { Evaluation, PrescreeningRuleResult } from "../../../api/LosConfiguration/LoanApplicationApi";
 import { OPERATOR_LABELS } from "../../../view/LosConfiguration/PreScreening/types";
@@ -55,13 +55,7 @@ function RuleRow({ rule, counted }: { rule: PrescreeningRuleResult; counted: boo
   );
 }
 
-export function PrescreeningAssessment({
-  evaluation,
-  onRecalculate,
-}: {
-  evaluation?: Evaluation;
-  onRecalculate?: () => void;
-}) {
+export function PrescreeningAssessment({ evaluation }: { evaluation?: Evaluation }) {
   const prescreening = evaluation?.prescreening;
   const groups = prescreening?.groups ?? [];
   const rules = groups.flatMap((group) => group.rules);
@@ -80,8 +74,8 @@ export function PrescreeningAssessment({
 
   return (
     <Box
-      px={18}
-      py={14}
+      px={14}
+      py={10}
       style={{
         height: "100%",
         display: "flex",
@@ -90,57 +84,31 @@ export function PrescreeningAssessment({
         background: "linear-gradient(180deg, var(--mantine-color-brand-0) 0%, var(--mantine-color-slate-0) 280px)",
       }}
     >
-      <Group justify="space-between" align="center" mb={10} wrap="wrap" gap={10}>
-        <Box>
-          <Group gap={9} align="center">
-            <Text fz={16} fw={800} c="slate.9" style={{ letterSpacing: "-0.01em" }}>
-              Pre-screening assessment
-            </Text>
-            {evaluation?.loan_product && (
-              <Badge size="sm" radius="xl" color="slate" variant="light">
-                {evaluation.loan_product}
-              </Badge>
-            )}
-          </Group>
-          <Text fz={11.5} c="slate.5" mt={2}>
-            Each rule is a requirement the applicant must meet — the worst failure decides the result.
-          </Text>
-        </Box>
-        {onRecalculate && (
-          <Button
-            size="compact-sm"
-            radius="md"
-            leftSection={<IconRefresh size={14} />}
-            onClick={onRecalculate}
-            styles={{
-              root: {
-                background: "linear-gradient(135deg, var(--mantine-color-brand-5), var(--mantine-color-brand-7))",
-                boxShadow: "0 8px 18px -10px color-mix(in srgb, var(--mantine-color-brand-6) 90%, transparent)",
-              },
-            }}
-          >
-            Recalculate with overrides
-          </Button>
-        )}
-      </Group>
-
       <Paper
         withBorder
         radius="md"
         px={12}
-        py={8}
-        mb={10}
+        py={7}
+        mb={8}
         bg="white"
         style={{ borderLeft: `4px solid var(--mantine-color-${style?.color ?? "slate"}-5)` }}
       >
         <Group justify="space-between" wrap="nowrap" gap={12}>
-          <Group gap={10} wrap="nowrap" style={{ minWidth: 0 }}>
+          <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+            <Text fz={13.5} fw={800} c="slate.9" style={{ flexShrink: 0 }}>
+              Pre-screening
+            </Text>
+            {evaluation?.loan_product && (
+              <Badge size="xs" radius="xl" color="slate" variant="light" style={{ flexShrink: 0 }}>
+                {evaluation.loan_product}
+              </Badge>
+            )}
             {verdict && (
-              <Badge radius="xl" variant="light" color={style?.color ?? "slate"} style={{ flexShrink: 0 }}>
+              <Badge size="sm" radius="xl" variant="light" color={style?.color ?? "slate"} style={{ flexShrink: 0 }}>
                 {style?.status ?? verdict}
               </Badge>
             )}
-            <Text fz={12.5} c="slate.7" truncate>
+            <Text fz={12.5} c="slate.7" truncate title={summary}>
               {summary}
             </Text>
           </Group>
@@ -220,7 +188,7 @@ export function PrescreeningAssessment({
           py={7}
           style={{ borderTop: "1px solid var(--mantine-color-slate-1)", background: "var(--mantine-color-slate-0)" }}
         >
-          A failed rule only counts when its group fails. Missing data fails the rule. Blocking → Fail · Review → Review · Warning → Warning · none → Pass.
+          Each rule is a requirement; a failed rule only counts when its group fails. Missing data fails the rule. Blocking → Fail · Review → Review · Warning → Warning · none → Pass.
         </Text>
       </Paper>
     </Box>
