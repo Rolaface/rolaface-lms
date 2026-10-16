@@ -264,7 +264,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit, editD
             </ThemeIcon>
             <Box>
               <Text size="md" fw={700} c="white" style={{ letterSpacing: '-0.01em' }}>
-                {isView ? 'View Loan Transfer' : editData ? 'Update Loan Transfer' : 'New Loan Transfer'}
+                {isView ? 'View Loan Transfer' : editData ? 'Edit Loan Transfer' : 'New Loan Transfer'}
               </Text>
               <Text size="xs" fw={500} c="brand.1">
                 {isView ? 'View branch-to-branch loan transfer details.' : 'Move selected loans from one branch to another.'}
@@ -463,7 +463,7 @@ export function LoanTransferModal({ opened, onClose, onMinimize, onSubmit, editD
           isViewMode={isView}
           onClose={handleModalClose}
           onSubmit={handleSubmit}
-          submitLabel={editData ? 'Update' : 'Save'}
+          submitLabel={editData ? 'Submit' : 'Submit'}
           submitDisabled={!canSave}
         />
       </Box>

@@ -82,6 +82,23 @@ export interface LoanDisbursementFormData {
   _comments?: string;
 }
 
+const MODE_TEXT = {
+  create: {
+    title: "Add Disbursement",
+    subtitle: "Process a disbursement payout against a sanctioned loan account.",
+    submit: "Submit",
+  },
+  edit: {
+    title: "Edit Disbursement",
+    subtitle: "Edit the details of this disbursement.",
+    submit: "Update Disbursement",
+  },
+  view: {
+    title: "View Disbursement",
+    subtitle: "View the details of this disbursement.",
+    submit: "",
+  },
+} as const;
 
 const CHARGE_TREATMENT_OPTIONS = ["Billed Separately", "Add to first repayment"] as const;
 
@@ -128,6 +145,7 @@ export function LoanDisbursementModal({
 }: LoanDisbursementModalProps) {
 
   const theme = useMantineTheme();
+  const mode = editId ? (isView ? "view" : "edit") : "create";
   const companyCurrency = useCompanyStore((state) => state.baseCurrency);
   const currencySymbol = getSymbol(companyCurrency);
 
@@ -658,10 +676,10 @@ export function LoanDisbursementModal({
               </ThemeIcon>
               <div className="min-w-0">
                 <Text size="md" fw={700} c="white" className="leading-tight truncate">
-                  {editId ? (isView ? "View Loan Disbursement" : "Update Loan Disbursement") : "Disburse Loan"}
+                  {MODE_TEXT[mode].title}
                 </Text>
                 <Text size="xs" c="brand.1" className="leading-tight truncate">
-                  {editId ? `Disbursement · ${editId}` : "Process a disbursement payout against a sanctioned loan account."}
+                  {editId ? `${MODE_TEXT[mode].subtitle} · ${editId}` : MODE_TEXT[mode].subtitle}
                 </Text>
               </div>
             </Group>
@@ -1183,7 +1201,7 @@ export function LoanDisbursementModal({
               variant="theme"
               isViewMode={isView}
               onClose={onClose}
-              submitLabel="Submit"
+              submitLabel={MODE_TEXT[mode].submit}
               submitLoading={isPending}
               errorMessage={footerErrorMessage}
             />
